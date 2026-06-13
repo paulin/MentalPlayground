@@ -22,12 +22,7 @@
 
   <main>
     <section class="arena-panel">
-      <div class="tabs" id="tabs">
-        <button class="tab active" data-tab="sim">Simulator</button>
-        <button class="tab" data-tab="brain">Inside the Brain</button>
-      </div>
-      <canvas id="arena" width="800" height="600" class="tab-view"></canvas>
-      <canvas id="brain" width="820" height="600" class="tab-view" hidden></canvas>
+      <canvas id="arena" width="800" height="600"></canvas>
     </section>
 
     <aside class="side-panel">
@@ -80,7 +75,16 @@
         <div class="hint">Import expects the model .json and .bin files together.</div>
       </div>
     </aside>
+
+    <section class="brain-panel">
+      <h2 class="brain-title">Inside the Brain — live DQN forward pass
+        <span class="brain-hint">hover any part for an explanation</span>
+      </h2>
+      <canvas id="brain" width="820" height="600"></canvas>
+    </section>
   </main>
+
+  <div id="brain-tooltip" class="tooltip" hidden></div>
 
   <script src="src/config.js"></script>
   <script src="src/sim.js"></script>

@@ -3,6 +3,22 @@
 Most recent entries first. Notes on what was done each day — decisions, ideas,
 and changes.
 
+## 2026-06-13
+
+### Brain viz: drop tabs, run alongside sim, add hover explainers
+- Removed the Simulator/Brain tab switch. The arena and the brain now render
+  **simultaneously** — arena + stats on the top row, the brain panel spans the
+  full width below. The brain draws every frame (one extra forward pass/frame),
+  independent of sim speed.
+- Added **hover explainers** on the brain canvas: `BrainRenderer.buildRegions()`
+  defines labelled rectangles mirroring the layout, `hitTest(x,y)` finds the one
+  under the cursor, and `main.js` shows a positioned tooltip (flips at viewport
+  edges). Each explains what the part is *and why it matters* — observation,
+  input/hidden layers, Q-values, explore/exploit, epsilon, replay buffer, step
+  counters, and training loss.
+- Dropped the duplicate in-canvas title (now an HTML heading above the canvas);
+  kept the live explore/exploit badge.
+
 ## 2026-06-12
 
 ### RL visualization ("Inside the Brain" tab)

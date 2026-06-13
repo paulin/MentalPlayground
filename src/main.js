@@ -12,7 +12,6 @@
   let agent = null;
   let mode = "idle"; // "idle" | "train" | "eval"
   let speed = 1;
-  let activeTab = "sim"; // "sim" | "brain"
 
   // Most recent decision + training internals, for the "Inside the Brain" tab
   const brainState = {
@@ -266,8 +265,8 @@
             await stepOnce();
           }
         }
-        if (activeTab === "brain") drawBrain();
-        else renderer.draw(sim);
+        renderer.draw(sim);
+        drawBrain();
         updateStatsUI();
       } finally {
         frameBusy = false;
@@ -313,18 +312,34 @@
     setStatus("Brain reset");
   });
 
-  // Tabs: switch between the simulator view and the RL internals view
-  document.querySelectorAll("#tabs .tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      activeTab = btn.dataset.tab;
-      document
-        .querySelectorAll("#tabs .tab")
-        .forEach((b) => b.classList.toggle("active", b === btn));
-      arenaCanvas.hidden = activeTab !== "sim";
-      brainCanvas.hidden = activeTab !== "brain";
-      if (activeTab === "brain") drawBrain();
-      else renderer.draw(sim);
-    });
+  // Hover the brain canvas for plain-language explanations of each part
+  const tooltip = $("brain-tooltip");
+  brainCanvas.addEventListener("mousemove", (e) => {
+    const rect = brainCanvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (brainCanvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (brainCanvas.height / rect.height);
+    const region = brainRenderer.hitTest(x, y);
+    if (!region) {
+      tooltip.hidden = true;
+      return;
+    }
+    tooltip.innerHTML = `<span class="tt-title"></span><span class="tt-body"></span>`;
+    tooltip.querySelector(".tt-title").textContent = region.title;
+    tooltip.querySelector(".tt-body").textContent = region.body;
+    tooltip.hidden = false;
+    // Position near the cursor, flipping left/up near the viewport edges
+    const pad = 14;
+    let left = e.clientX + pad;
+    let top = e.clientY + pad;
+    const tw = tooltip.offsetWidth;
+    const th = tooltip.offsetHeight;
+    if (left + tw > window.innerWidth - 8) left = e.clientX - tw - pad;
+    if (top + th > window.innerHeight - 8) top = e.clientY - th - pad;
+    tooltip.style.left = left + "px";
+    tooltip.style.top = top + "px";
+  });
+  brainCanvas.addEventListener("mouseleave", () => {
+    tooltip.hidden = true;
   });
 
   // Click the arena to drop an obstacle (mapping CSS pixels -> canvas pixels)

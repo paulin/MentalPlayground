@@ -44,6 +44,68 @@ class BrainRenderer {
     this.w = canvas.width;
     this.h = canvas.height;
     this.actionNames = actionNames;
+    this.regions = this.buildRegions();
+  }
+
+  // Hover regions (canvas coordinates) with plain-language explanations. These
+  // rectangles mirror the layout drawn below.
+  buildRegions() {
+    const W = this.w;
+    return [
+      {
+        x: W - 228, y: 6, w: 220, h: 22,
+        title: "Explore vs exploit",
+        body: "Each tick the bike either takes a random action (explore) to discover new tactics, or its best-known action (exploit). It explores with probability epsilon, so early training is mostly random and shifts to deliberate play as epsilon decays.",
+      },
+      {
+        x: 12, y: 36, w: 150, h: 404,
+        title: "Observation — what the bike senses",
+        body: "The 15 numbers fed into the network this instant: own position, heading and speed; the enemy's relative position, distance and angle; whether the enemy is in the firing cone and the gun is reloaded; and clear distance ahead/left/right. This is the only information the bike has — better sensing means better decisions.",
+      },
+      {
+        x: 220, y: 56, w: 60, h: 422,
+        title: "Input layer (15 neurons)",
+        body: "One neuron per observation value — where information enters the network.",
+      },
+      {
+        x: 340, y: 56, w: 200, h: 422,
+        title: "Hidden layers (64 + 64, ReLU)",
+        body: "These neurons combine the inputs into higher-level features like \"enemy is to my left and in range.\" Brighter = more active. Connection lines brighten with the firing strength of the neuron they leave, so you can watch a signal propagate left to right.",
+      },
+      {
+        x: 580, y: 56, w: W - 584, h: 404,
+        title: "Q-values — expected reward per action",
+        body: "The network's estimate of total future reward for each of the 11 actions if taken right now. The bike normally picks the highest (\"best\", highlighted). Learning means nudging these estimates toward the rewards actually observed — this is the heart of what the DQN learns.",
+      },
+      {
+        x: 12, y: 498, w: 212, h: 32,
+        title: "Epsilon — exploration rate",
+        body: "The probability of a random action. Starts at 1.0 (all random) and decays toward 0.05, so the bike gradually trusts what it has learned instead of guessing.",
+      },
+      {
+        x: 12, y: 532, w: 212, h: 40,
+        title: "Replay buffer",
+        body: "A memory of past transitions (state, action, reward, next state). Training samples random batches from it, which breaks the correlation between consecutive steps and stabilizes learning. Training only starts once the buffer has enough samples.",
+      },
+      {
+        x: 235, y: 498, w: 165, h: 62,
+        title: "Step counters",
+        body: "Env steps: simulation ticks the bike has lived through. Gradient steps: how many times the network's weights have actually been updated.",
+      },
+      {
+        x: 410, y: 486, w: W - 422, h: 92,
+        title: "Training loss",
+        body: "How far the network's Q-value predictions were from their temporal-difference targets at each weight update. It's naturally noisy in reinforcement learning, but a broadly downward or stable trend means learning is converging.",
+      },
+    ];
+  }
+
+  // Returns the region under a canvas-space point, or null.
+  hitTest(px, py) {
+    for (const r of this.regions) {
+      if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) return r;
+    }
+    return null;
   }
 
   // state: { obs, q, activations:[h1,h2], chosenAction, greedyAction, wasExplore,
@@ -72,10 +134,6 @@ class BrainRenderer {
 
   drawHeader(s) {
     const ctx = this.ctx;
-    ctx.fillStyle = TEXT_BRIGHT;
-    ctx.font = "bold 14px system-ui, sans-serif";
-    ctx.fillText("Inside the Brain — live DQN forward pass", 12, 20);
-
     // explore / exploit badge
     const exploring = s.wasExplore;
     const label = exploring ? "EXPLORING (random)" : "EXPLOITING (greedy)";
