@@ -5,6 +5,19 @@ and changes.
 
 ## 2026-06-13
 
+### Repo → MentalPlayground (multi-app reorg)
+- Reframed the repo as **MentalPlayground**, a collection of single-page JS
+  learning apps. Moved the entire Bikefight app into `bikefight/` (via `git mv`,
+  preserving history) — relative paths inside it are unchanged so it still runs
+  and `node bikefight/test/smoke.js` passes.
+- Added a root **landing page** (`index.html`) with a card per app (Bikefight +
+  a "more coming" placeholder) and a root **README** explaining the repo, how to
+  run (serve root, pick an app), the layout, and how to add a new app.
+- Kept `docs/journal.md` at the root as the repo-wide journal; Bikefight's own
+  spec/notes moved to `bikefight/docs/`.
+- Pending (outward-facing, needs the user): rename the GitHub repo
+  `bikefightsimulator` → `MentalPlayground`, and optionally the local folder.
+
 ### Brain viz: drop tabs, run alongside sim, add hover explainers
 - Removed the Simulator/Brain tab switch. The arena and the brain now render
   **simultaneously** — arena + stats on the top row, the brain panel spans the

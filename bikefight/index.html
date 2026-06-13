@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bikefight RL Simulator</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+  <script>
+    // Offline fallback: if the CDN is unreachable, try a locally vendored copy
+    // (download tf.min.js from the @tensorflow/tfjs npm package into vendor/).
+    if (typeof tf === "undefined") {
+      document.write('<script src="vendor/tf.min.js"><\/script>');
+    }
+  </script>
+</head>
+<body>
+  <header>
+    <h1>Bikefight RL Simulator</h1>
+    <span id="status" class="status">Loading…</span>
+  </header>
+
+  <main>
+    <section class="arena-panel">
+      <canvas id="arena" width="800" height="600"></canvas>
+    </section>
+
+    <aside class="side-panel">
+      <div class="panel">
+        <h2>Controls</h2>
+        <div class="button-row">
+          <button id="btn-train" class="primary">Start Training</button>
+          <button id="btn-pause">Pause</button>
+        </div>
+        <div class="button-row">
+          <button id="btn-best">Run Best Brain</button>
+          <button id="btn-reset" class="danger">Reset Brain</button>
+        </div>
+        <h3>Speed</h3>
+        <div class="button-row" id="speed-buttons">
+          <button data-speed="1" class="speed active">1x</button>
+          <button data-speed="10" class="speed">10x</button>
+          <button data-speed="50" class="speed">50x</button>
+        </div>
+        <h3>Obstacles</h3>
+        <div class="button-row">
+          <button id="btn-clear-obstacles">Clear Obstacles</button>
+        </div>
+        <div class="hint">Click the arena to drop a green obstacle — it blocks shots and bikes can't drive over it.</div>
+      </div>
+
+      <div class="panel">
+        <h2>Statistics</h2>
+        <table class="stats">
+          <tr><td>Episode</td><td id="stat-episodes">0</td></tr>
+          <tr><td>Record (W–L–D)</td><td id="stat-record">0–0–0</td></tr>
+          <tr><td>Win Rate (last 100)</td><td id="stat-winrate">–</td></tr>
+          <tr><td>Avg Reward (last 100)</td><td id="stat-avgreward">–</td></tr>
+          <tr><td>Epsilon</td><td id="stat-epsilon">1.00</td></tr>
+          <tr><td>Hits Dealt</td><td id="stat-hitsdealt">0</td></tr>
+          <tr><td>Hits Taken</td><td id="stat-hitstaken">0</td></tr>
+          <tr><td>Best Win Rate</td><td id="stat-best">–</td></tr>
+        </table>
+        <canvas id="chart" width="340" height="120"></canvas>
+        <div class="chart-caption">Episode reward (orange = 20-episode average)</div>
+      </div>
+
+      <div class="panel">
+        <h2>Persistence</h2>
+        <div class="button-row">
+          <button id="btn-export">Export Brain</button>
+          <button id="btn-import">Import Brain</button>
+        </div>
+        <input type="file" id="import-files" accept=".json,.bin" multiple hidden />
+        <div class="hint">Import expects the model .json and .bin files together.</div>
+      </div>
+    </aside>
+
+    <section class="brain-panel">
+      <h2 class="brain-title">Inside the Brain — live DQN forward pass
+        <span class="brain-hint">hover any part for an explanation</span>
+      </h2>
+      <canvas id="brain" width="820" height="600"></canvas>
+    </section>
+  </main>
+
+  <div id="brain-tooltip" class="tooltip" hidden></div>
+
+  <script src="src/config.js"></script>
+  <script src="src/sim.js"></script>
+  <script src="src/scriptedBot.js"></script>
+  <script src="src/dqn.js"></script>
+  <script src="src/renderer.js"></script>
+  <script src="src/brainViz.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>

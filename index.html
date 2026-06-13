@@ -3,95 +3,148 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bikefight RL Simulator</title>
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
-  <script>
-    // Offline fallback: if the CDN is unreachable, try a locally vendored copy
-    // (download tf.min.js from the @tensorflow/tfjs npm package into vendor/).
-    if (typeof tf === "undefined") {
-      document.write('<script src="vendor/tf.min.js"><\/script>');
+  <title>MentalPlayground</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #14161c;
+      color: #d8dce6;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      line-height: 1.5;
     }
-  </script>
+    header {
+      padding: 40px 28px 24px;
+      border-bottom: 1px solid #262a35;
+    }
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      color: #f0f2f7;
+      letter-spacing: 0.01em;
+    }
+    .tagline {
+      margin: 8px 0 0;
+      color: #9aa3b5;
+      max-width: 680px;
+      font-size: 15px;
+    }
+    main {
+      padding: 28px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 18px;
+      max-width: 1100px;
+    }
+    .card {
+      display: flex;
+      flex-direction: column;
+      background: #1b1e27;
+      border: 1px solid #2e3342;
+      border-radius: 10px;
+      padding: 20px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .card:hover {
+      border-color: #3c6a7a;
+      transform: translateY(-2px);
+    }
+    .card h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+      color: #6fc3ff;
+    }
+    .card p {
+      margin: 0 0 14px;
+      font-size: 14px;
+      color: #c2c8d4;
+      flex: 1;
+    }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .tag {
+      font-size: 11px;
+      padding: 3px 8px;
+      background: #232a36;
+      border: 1px solid #2e3a48;
+      border-radius: 20px;
+      color: #8fa6c0;
+    }
+    .open {
+      font-size: 14px;
+      font-weight: 600;
+      color: #8fd18f;
+    }
+    .card.placeholder {
+      border-style: dashed;
+      opacity: 0.7;
+    }
+    .card.placeholder h2 { color: #717a8c; }
+    footer {
+      padding: 8px 28px 40px;
+      max-width: 1100px;
+      color: #717a8c;
+      font-size: 13px;
+    }
+    code {
+      background: #1b1e27;
+      border: 1px solid #2e3342;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 12px;
+    }
+    a { color: #6fc3ff; }
+  </style>
 </head>
 <body>
   <header>
-    <h1>Bikefight RL Simulator</h1>
-    <span id="status" class="status">Loading…</span>
+    <h1>MentalPlayground</h1>
+    <p class="tagline">
+      A collection of single-page JavaScript apps built for learning — visual,
+      self-contained, and runnable with no build step. Each one makes an idea you
+      can usually only read about something you can watch happen.
+    </p>
   </header>
 
   <main>
-    <section class="arena-panel">
-      <canvas id="arena" width="800" height="600"></canvas>
-    </section>
-
-    <aside class="side-panel">
-      <div class="panel">
-        <h2>Controls</h2>
-        <div class="button-row">
-          <button id="btn-train" class="primary">Start Training</button>
-          <button id="btn-pause">Pause</button>
-        </div>
-        <div class="button-row">
-          <button id="btn-best">Run Best Brain</button>
-          <button id="btn-reset" class="danger">Reset Brain</button>
-        </div>
-        <h3>Speed</h3>
-        <div class="button-row" id="speed-buttons">
-          <button data-speed="1" class="speed active">1x</button>
-          <button data-speed="10" class="speed">10x</button>
-          <button data-speed="50" class="speed">50x</button>
-        </div>
-        <h3>Obstacles</h3>
-        <div class="button-row">
-          <button id="btn-clear-obstacles">Clear Obstacles</button>
-        </div>
-        <div class="hint">Click the arena to drop a green obstacle — it blocks shots and bikes can't drive over it.</div>
+    <a class="card" href="bikefight/index.html">
+      <h2>Bikefight RL Simulator</h2>
+      <p>
+        Two vehicles fight in an arena while a blue learner trains against a
+        scripted bot using a TensorFlow.js deep Q-network. Place obstacles, watch
+        the win rate climb, and open the live "Inside the Brain" panel to see the
+        network's observations, neuron activations, and Q-values update in real
+        time.
+      </p>
+      <div class="tags">
+        <span class="tag">Reinforcement learning</span>
+        <span class="tag">TensorFlow.js</span>
+        <span class="tag">Canvas</span>
       </div>
+      <span class="open">Open →</span>
+    </a>
 
-      <div class="panel">
-        <h2>Statistics</h2>
-        <table class="stats">
-          <tr><td>Episode</td><td id="stat-episodes">0</td></tr>
-          <tr><td>Record (W–L–D)</td><td id="stat-record">0–0–0</td></tr>
-          <tr><td>Win Rate (last 100)</td><td id="stat-winrate">–</td></tr>
-          <tr><td>Avg Reward (last 100)</td><td id="stat-avgreward">–</td></tr>
-          <tr><td>Epsilon</td><td id="stat-epsilon">1.00</td></tr>
-          <tr><td>Hits Dealt</td><td id="stat-hitsdealt">0</td></tr>
-          <tr><td>Hits Taken</td><td id="stat-hitstaken">0</td></tr>
-          <tr><td>Best Win Rate</td><td id="stat-best">–</td></tr>
-        </table>
-        <canvas id="chart" width="340" height="120"></canvas>
-        <div class="chart-caption">Episode reward (orange = 20-episode average)</div>
-      </div>
-
-      <div class="panel">
-        <h2>Persistence</h2>
-        <div class="button-row">
-          <button id="btn-export">Export Brain</button>
-          <button id="btn-import">Import Brain</button>
-        </div>
-        <input type="file" id="import-files" accept=".json,.bin" multiple hidden />
-        <div class="hint">Import expects the model .json and .bin files together.</div>
-      </div>
-    </aside>
-
-    <section class="brain-panel">
-      <h2 class="brain-title">Inside the Brain — live DQN forward pass
-        <span class="brain-hint">hover any part for an explanation</span>
-      </h2>
-      <canvas id="brain" width="820" height="600"></canvas>
-    </section>
+    <div class="card placeholder">
+      <h2>More coming</h2>
+      <p>
+        This playground is built to grow. New experiments get added as their own
+        folder with an entry here.
+      </p>
+      <span class="open">&nbsp;</span>
+    </div>
   </main>
 
-  <div id="brain-tooltip" class="tooltip" hidden></div>
-
-  <script src="src/config.js"></script>
-  <script src="src/sim.js"></script>
-  <script src="src/scriptedBot.js"></script>
-  <script src="src/dqn.js"></script>
-  <script src="src/renderer.js"></script>
-  <script src="src/brainViz.js"></script>
-  <script src="src/main.js"></script>
+  <footer>
+    Run locally by serving the repo root — <code>npx serve .</code> or
+    <code>python3 -m http.server 8000</code> — then open the printed URL and pick
+    an app. See <a href="README.md">README.md</a> for details and how to add a
+    new one.
+  </footer>
 </body>
 </html>
