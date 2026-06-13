@@ -113,6 +113,7 @@ const location = { hash: "" };
 const base = path.join(__dirname, "..");
 const files = [
   "src/framework.js",
+  "src/lib/cart.js",
   "src/algos/linearRegression.js",
   "src/algos/knn.js",
   "src/algos/decisionTree.js",
@@ -121,6 +122,9 @@ const files = [
   "src/algos/logisticRegression.js",
   "src/algos/svm.js",
   "src/algos/naiveBayes.js",
+  "src/algos/randomForest.js",
+  "src/algos/gradientBoosting.js",
+  "src/algos/xgboost.js",
   "src/algos/upcoming.js",
 ];
 const source = files.map((f) => fs.readFileSync(path.join(base, f), "utf8")).join("\n;\n");
@@ -148,7 +152,8 @@ const navItems = document.querySelectorAll(".nav-item");
 assert(navItems.length >= 20, `expected the full roadmap in the nav, got ${navItems.length}`);
 
 const readyIds = ["linear-regression", "knn", "decision-tree", "kmeans", "pca",
-  "logistic-regression", "svm", "naive-bayes"];
+  "logistic-regression", "svm", "naive-bayes",
+  "random-forest", "gradient-boosting", "xgboost"];
 
 // Open every screen and run it.
 let opened = 0;

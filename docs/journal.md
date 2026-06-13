@@ -5,6 +5,24 @@ and changes.
 
 ## 2026-06-13
 
+### Data Science Playground — Phase 2 tree ensembles (completes Phase 2)
+- Extracted a shared **CART library** (`src/lib/cart.js`): classification trees
+  (2D, with optional per-split feature bagging for forests) and 1D regression
+  trees (with an L2 leaf regularizer for the XGBoost screen). Refactored the
+  Decision Tree screen to use it — no behavior change, smoke test still green.
+- **Random Forest**: bootstrap + random-subspace trees, majority vote. Main view
+  shades by vote share (smooth boundary); internal view tiles the first 12
+  individual trees' blocky, disagreeing regions so you see what averaging fixes.
+- **Gradient Boosting** (1D regression): start at the mean, add small trees to
+  the residuals. Main view shows the ensemble curve sharpening; internal view
+  shows the residual stems and the newest tree's step contribution. Step/Play
+  through rounds, learning-rate and depth knobs.
+- **XGBoost**: boosting + lambda (L2 leaf penalty) + a held-out validation set.
+  Internal view is the train-vs-validation RMSE curve with the best-round marker
+  — the canonical overfitting picture. Depth/lr/lambda all push the turning point.
+- Removed the three from the `soon` roadmap; wired `cart.js` and the new screens
+  into index.html and the smoke test (11 ready screens now exercised).
+
 ### Data Science Playground — Phase 2 classifiers
 - Added the three boundary/probabilistic classifiers from Phase 2:
   **Logistic Regression** (gradient descent on log-loss, probability heatmap,

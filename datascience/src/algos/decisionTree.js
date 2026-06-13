@@ -39,60 +39,10 @@ DSP.register({
       return `rgba(${r},${g},${b},${alpha})`;
     }
 
-    function impurity(counts, total) {
-      if (!total) return 0;
-      if (criterion === "gini") {
-        let s = 1;
-        for (const k in counts) { const p = counts[k] / total; s -= p * p; }
-        return s;
-      }
-      let s = 0; // entropy
-      for (const k in counts) { const p = counts[k] / total; if (p > 0) s -= p * Math.log2(p); }
-      return s;
-    }
-    function tally(idx) {
-      const c = {}; for (const i of idx) c[points[i].label] = (c[points[i].label] || 0) + 1; return c;
-    }
-    function majority(counts) {
-      let best = 0, bv = -1; for (const k in counts) if (counts[k] > bv) { bv = counts[k]; best = Number(k); } return best;
-    }
-
-    function build(idx, depth) {
-      const counts = tally(idx);
-      const total = idx.length;
-      const imp = impurity(counts, total);
-      const node = { leaf: true, label: majority(counts), count: total, counts, impurity: imp, depth };
-      if (depth >= maxDepth || total < minSamples * 2 || imp === 0) return node;
-
-      let best = null;
-      for (const feat of ["x", "y"]) {
-        const sorted = [...idx].sort((a, b) => points[a][feat] - points[b][feat]);
-        for (let s = 0; s < sorted.length - 1; s++) {
-          const a = points[sorted[s]][feat], bnext = points[sorted[s + 1]][feat];
-          if (a === bnext) continue;
-          const t = (a + bnext) / 2;
-          const left = idx.filter((i) => points[i][feat] <= t);
-          const right = idx.filter((i) => points[i][feat] > t);
-          if (left.length < minSamples || right.length < minSamples) continue;
-          const il = impurity(tally(left), left.length), ir = impurity(tally(right), right.length);
-          const gain = imp - (left.length / total) * il - (right.length / total) * ir;
-          if (!best || gain > best.gain) best = { feat, t, gain, left, right };
-        }
-      }
-      if (!best || best.gain <= 1e-9) return node;
-      return {
-        leaf: false, feat: best.feat, t: best.t, gain: best.gain, impurity: imp, count: total, depth,
-        left: build(best.left, depth + 1), right: build(best.right, depth + 1),
-      };
-    }
-
-    function predict(node, x, y) {
-      while (!node.leaf) node = (node.feat === "x" ? x : y) <= node.t ? node.left : node.right;
-      return node.label;
-    }
-
-    function countLeaves(node) { return node.leaf ? 1 : countLeaves(node.left) + countLeaves(node.right); }
-    function treeDepth(node) { return node.leaf ? node.depth : Math.max(treeDepth(node.left), treeDepth(node.right)); }
+    // Tree building lives in the shared CART library (src/lib/cart.js).
+    const predict = (node, x, y) => CART.predict(node, x, y);
+    const countLeaves = (node) => CART.countLeaves(node);
+    const treeDepth = (node) => CART.treeDepth(node);
 
     const mAcc = ui.metric(panels.metrics, "Train accuracy");
     const mLeaves = ui.metric(panels.metrics, "Leaves");
@@ -101,7 +51,7 @@ DSP.register({
     const mImp = ui.metric(panels.metrics, "Root impurity");
 
     function rebuild() {
-      tree = points.length ? build(points.map((_, i) => i), 0) : null;
+      tree = points.length ? CART.buildClassTree(points, points.map((_, i) => i), { maxDepth, minSamples, criterion }) : null;
     }
 
     function drawRegions(node, x1, y1, x2, y2) {

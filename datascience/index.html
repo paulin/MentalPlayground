@@ -17,8 +17,9 @@
     <main id="stage" class="stage"></main>
   </div>
 
-  <!-- Shared engine first, then each algorithm self-registers, then init. -->
+  <!-- Shared engine + libraries first, then each algorithm self-registers, then init. -->
   <script src="src/framework.js"></script>
+  <script src="src/lib/cart.js"></script>
   <script src="src/algos/linearRegression.js"></script>
   <script src="src/algos/knn.js"></script>
   <script src="src/algos/decisionTree.js"></script>
@@ -27,6 +28,9 @@
   <script src="src/algos/logisticRegression.js"></script>
   <script src="src/algos/svm.js"></script>
   <script src="src/algos/naiveBayes.js"></script>
+  <script src="src/algos/randomForest.js"></script>
+  <script src="src/algos/gradientBoosting.js"></script>
+  <script src="src/algos/xgboost.js"></script>
   <script src="src/algos/upcoming.js"></script>
   <script>DSP.init();</script>
 </body>

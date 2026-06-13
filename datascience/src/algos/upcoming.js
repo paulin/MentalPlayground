@@ -3,11 +3,6 @@
 // The rest of the spec's roadmap. These register as "soon" so the full map of
 // concepts is visible in the nav; each becomes a real screen as it's built.
 [
-  // Phase 2 — classic supervised learning (remaining; tree ensembles)
-  { id: "random-forest", name: "Random Forest", phase: "Phase 2 — Supervised", intuition: "Many shallow, decorrelated trees vote; the crowd is steadier than any single tree." },
-  { id: "gradient-boosting", name: "Gradient Boosting", phase: "Phase 2 — Supervised", intuition: "Each new tree fits the errors the previous trees left behind." },
-  { id: "xgboost", name: "XGBoost", phase: "Phase 2 — Supervised", intuition: "Boosted trees with regularization that trades raw fit against overfitting." },
-
   // Phase 3 — density / hierarchical clustering
   { id: "dbscan", name: "DBSCAN", phase: "Phase 3 — Unsupervised", intuition: "Clusters are dense regions; sparse points are just noise." },
   { id: "hierarchical", name: "Hierarchical Clustering", phase: "Phase 3 — Unsupervised", intuition: "Clusters exist at every scale; cut the dendrogram wherever you like." },
