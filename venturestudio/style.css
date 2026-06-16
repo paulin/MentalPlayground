@@ -335,6 +335,20 @@ tr.ct-total td {
 .ct-hold.spun { border-color: #2f4a55; color: #9fe0ff; }
 .ct-note { font-size: 11px; color: #717a8c; }
 .tag-spun { color: #9fe0ff; font-size: 11px; }
+.ct-fundline {
+  font-size: 12px;
+  color: #9aa3b5;
+  margin: -2px 0 10px;
+}
+.ct-fundline b { font-variant-numeric: tabular-nums; }
+tr.ct-subhead td {
+  padding: 10px 0 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #8fa6c0;
+  border-bottom: 1px solid #2e3342;
+}
 
 /* --- Edit-names modal ---------------------------------------------------- */
 .modal-overlay {

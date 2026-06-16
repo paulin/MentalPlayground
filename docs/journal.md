@@ -5,6 +5,25 @@ and changes.
 
 ## 2026-06-16
 
+- **MIN-795 — Investors buy shares from participants; split capital vs operational
+  costs.** Reworked the Venture Studio Simulator economics so investors hold **no
+  base BSSS** — every participant earns the venture's shares through work and
+  *gives up* a cut of them to the investor pool in exchange for monthly cash drawn
+  from the fund (investor ownership = Σ give-ups, divided by cohort share). The
+  fund now depletes **only by actual draws** (no flat operating budget); if nobody
+  draws, it holds. Operations stops being a no-equity fee entity and becomes
+  contributor-like (earns BSSS + gives up shares); the **10% LLC stewardship fee
+  was dropped**. Two cost categories — contributors = capital (development),
+  operations = operational (overhead) — are surfaced via running fund totals and a
+  cap table grouped Operational / Capital / Investors. Key changes in
+  `venturestudio/app.js`: new `payMonthlyDraws`, `fundedParticipants`, `opsSet`;
+  `allocateMonthlyPoints` drops the investor base; operations gain
+  sharePercent/fundedMonthly/giveUpPercent. Verified with a headless 18-month sim:
+  every ownership table sums to 100%, default investor share of filled ≈ 12.3%
+  (ops 35%×35%), operations keeps ≈ 22.8%, `capitalSpent` $0 / `operationalSpent`
+  tracks the $15k/mo draw, no stewardship fee anywhere, render()/openEditModal()
+  clean. Built on the unmerged MIN-793 branch. Implemented by Claude Opus 4.8.
+
 - **MIN-793 — Separate the Steward from the Contributors.** Pulled the steward
   out of the Venture Studio Simulator's contributor list into a new top-level
   **Operations** category (`state.operations`, default "Ministry of Product" at
