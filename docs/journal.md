@@ -3,6 +3,25 @@
 Most recent entries first. Notes on what was done each day — decisions, ideas,
 and changes.
 
+## 2026-06-16
+
+- **MIN-793 — Separate the Steward from the Contributors.** Pulled the steward
+  out of the Venture Studio Simulator's contributor list into a new top-level
+  **Operations** category (`state.operations`, default "Ministry of Product" at
+  $15k/mo). Operations charges a monthly fee from the VSC1 fund and collects the
+  10% LLC stewardship fee, but earns **no** BSSS equity. Removed the `steward`
+  role special-casing entirely (`isSteward`/`stewardSet`/`refreshStewardSet`,
+  steward→"mop" pie/ownership mapping); contributors are now purely
+  equity-earning builders and were rebalanced to 30/20/15% so the BSSS base
+  (incl. 35% investor pool) still sums to 100. Added an Operations section to the
+  Edit Participants modal (name + fee/mo, add/remove) and an Operations holder
+  type to the cap table (fee → Funded column, stewardship fees → Distributions,
+  no equity). Files: `venturestudio/app.js`, `venturestudio/README.md`. Verified
+  with a headless sandbox sim (16 months, 7 spinouts): every LLC ownership table
+  sums to 100% with no Operations equity, `ops_mop` accrued $180k in fund fees
+  and ~$31k in stewardship fees, and `render()`/`openEditModal()` run clean.
+  Implemented by Claude Sonnet 4.6 (default tier — issue had no `model:` label).
+
 ## 2026-06-13
 
 ### Data Science Playground — deep-learning trio (spec complete, 20/20)
