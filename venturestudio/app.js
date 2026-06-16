@@ -117,21 +117,11 @@
   // that just opened with no points yet is still unallocated.
   function earnedOwnership(venture) {
     return groupOwnership(venture, "investor") +
-      groupOwnership(venture, "mop") +
       groupOwnership(venture, "contributor");
   }
 
-  // Map a participant id to an ownership group. Steward-role contributors count
-  // as the MoP/steward portion; everyone else is a contributor.
-  function isSteward(c) { return (c.role || "").trim().toLowerCase() === "steward"; }
-  let stewardSet = new Set();
-  function refreshStewardSet() {
-    stewardSet = new Set((state && state.contributors ? state.contributors : [])
-      .filter(isSteward).map((c) => c.id));
-  }
   function participantGroup(pid) {
     if (pid === "investor_pool") return "investor";
-    if (pid === "mop" || pid === "steward" || stewardSet.has(pid)) return "mop";
     return "contributor";
   }
 
@@ -161,12 +151,16 @@
       // Contributors earn a base BSSS share through work (sharePercent). In
       // exchange for monthly cash from the VSC1 fund (fundedMonthly), a contributor
       // can give up a cut of the shares they earn (giveUpPercent) — those shares
-      // pass to the investor pool. A "steward" role also collects the LLC fee.
+      // pass to the investor pool.
       contributors: [
-        { id: "matt", name: "Ministry of Product", role: "Steward", sharePercent: 35, fundedMonthly: 15000, giveUpPercent: 35, pointsEarned: 0 },
-        { id: "mktg", name: "Strategic Marketing", role: "Strategic Marketing", sharePercent: 15, fundedMonthly: 0, giveUpPercent: 0, pointsEarned: 0 },
-        { id: "kevin", name: "Kevin", role: "Engineering", sharePercent: 10, fundedMonthly: 0, giveUpPercent: 0, pointsEarned: 0 },
-        { id: "adam", name: "Adam", role: "Product", sharePercent: 5, fundedMonthly: 0, giveUpPercent: 0, pointsEarned: 0 },
+        { id: "mktg", name: "Strategic Marketing", role: "Strategic Marketing", sharePercent: 30, fundedMonthly: 0, giveUpPercent: 0, pointsEarned: 0 },
+        { id: "kevin", name: "Engineering", role: "Engineering", sharePercent: 20, fundedMonthly: 0, giveUpPercent: 0, pointsEarned: 0 },
+        { id: "adam", name: "Product", role: "Product", sharePercent: 15, fundedMonthly: 0, giveUpPercent: 0, pointsEarned: 0 },
+      ],
+      // Operations entities charge a monthly fee from the fund and earn the 10%
+      // LLC stewardship fee. They do NOT receive BSSS equity shares.
+      operations: [
+        { id: "ops_mop", name: "Ministry of Product", feeMonthly: 15000 },
       ],
       ventures: [
         addVenture("TrueUp"),
@@ -296,12 +290,12 @@
   }
 
   // Pay out one month of a spun-out LLC's economics: the 10% stewardship fee to
-  // Ministry of Product (the steward), and the remaining profit to equity holders.
+  // Operations entities, and the remaining profit to equity holders.
   function distributeLLCEarnings(state, llc) {
-    const stewards = state.contributors.filter(isSteward);
-    if (stewards.length) {
-      const per = llc.stewardshipFee / stewards.length;
-      stewards.forEach((c) => addEarnings(state, c.id, per));
+    const ops = state.operations || [];
+    if (ops.length) {
+      const per = llc.stewardshipFee / ops.length;
+      ops.forEach((o) => addEarnings(state, o.id, per));
     } else {
       addEarnings(state, "mop_entity", llc.stewardshipFee);
     }
@@ -394,7 +388,6 @@
 
   function advanceOneMonth(state) {
     if (state.vsc1.status === "fundraising") return;
-    refreshStewardSet();
     state.currentMonth += 1;
     state.mop.monthlyRevenueFromCohort = 0;
 
@@ -403,6 +396,10 @@
       // the fund pays each contributor their monthly amount (out of the budget)
       state.contributors.forEach((c) => {
         if (c.fundedMonthly) addFundCash(state, c.id, c.fundedMonthly);
+      });
+      // the fund pays each Operations entity its monthly fee
+      (state.operations || []).forEach((o) => {
+        if (o.feeMonthly) addFundCash(state, o.id, o.feeMonthly);
       });
     } else if (state.vsc1.status !== "complete") {
       state.vsc1.status = "complete";
@@ -429,7 +426,7 @@
       const pct = inv.cohortShare * investorGroup;
       if (pct > 0) rows.push({ id: inv.id, name: inv.name, group: "investor", percent: pct });
     });
-    // steward(s) and contributors individually
+    // contributors individually
     state.contributors.forEach((c) => {
       const pct = participantOwnership(venture, c.id);
       if (pct > 0) {
@@ -437,7 +434,7 @@
           id: c.id,
           name: c.name,
           role: c.role,
-          group: isSteward(c) ? "mop" : "contributor",
+          group: "contributor",
           percent: pct,
         });
       }
@@ -512,6 +509,7 @@
       _id = 100000;
       if (!s.earnings) s.earnings = {};
       if (!s.fundCash) s.fundCash = {};
+      if (!s.operations) s.operations = [{ id: "ops_mop", name: "Ministry of Product", feeMonthly: 15000 }];
       return s;
     } catch (e) { return null; }
   }
@@ -549,6 +547,7 @@
     const snapshot = JSON.stringify({
       ipp: state.vsc1.investorPoolPercent,
       contributors: state.contributors,
+      operations: state.operations,
       investors: state.investors,
     });
 
@@ -557,8 +556,8 @@
       const s = JSON.parse(snapshot);
       state.vsc1.investorPoolPercent = s.ipp;
       state.contributors = s.contributors;
+      state.operations = s.operations;
       state.investors = s.investors;
-      refreshStewardSet();
       close(); render();
     }
     function saveAndClose() {
@@ -567,7 +566,6 @@
       state.vsc1.fundedAmount = newFunded;
       if (state.vsc1.status !== "fundraising") state.vsc1.remainingCapital += (newFunded - oldFunded);
       recomputeCohortShares(state);
-      refreshStewardSet();
       save(); close(); render();
     }
 
@@ -579,8 +577,8 @@
       modal.appendChild(el("h2", null, "Edit Participants"));
       modal.appendChild(el("p", "modal-sub",
         "Contributors earn a BSSS share of every venture through their work. In exchange for monthly cash from the VSC1 fund, " +
-        "a contributor can give up a cut of the shares they earn — those shares pass to the investor pool. " +
-        "Blank = zero. A “steward” role also collects the 10% LLC stewardship fee."));
+        "a contributor can give up a cut of the shares they earn — those shares pass to the investor pool. Blank = zero. " +
+        "Operations entities charge a monthly fee from the fund and earn the 10% LLC stewardship fee — they do not receive BSSS equity."));
 
       const totalEl = el("div", "modal-total");
       function updateTotal() {
@@ -614,13 +612,13 @@
       state.contributors.forEach((c) => {
         const row = el("div", "modal-row");
         row.appendChild(textInput(c.name, "modal-input", "Name", (v) => { c.name = v; }));
-        row.appendChild(textInput(c.role, "modal-input modal-role", "Role", (v) => { c.role = v; refreshStewardSet(); }));
+        row.appendChild(textInput(c.role, "modal-input modal-role", "Role", (v) => { c.role = v; }));
         row.appendChild(numInput(c.sharePercent, "modal-input modal-pct", (v) => { c.sharePercent = v; updateTotal(); }));
         row.appendChild(numInput(c.fundedMonthly, "modal-input modal-amt", (v) => { c.fundedMonthly = v; }));
         row.appendChild(numInput(c.giveUpPercent, "modal-input modal-pct", (v) => { c.giveUpPercent = v; }));
         const del = el("button", "tiny danger modal-delbtn", "✕");
         del.title = "Remove contributor";
-        del.onclick = () => { state.contributors = state.contributors.filter((x) => x !== c); refreshStewardSet(); build(); };
+        del.onclick = () => { state.contributors = state.contributors.filter((x) => x !== c); build(); };
         row.appendChild(del);
         modal.appendChild(row);
       });
@@ -630,6 +628,31 @@
         build();
       };
       modal.appendChild(addC);
+
+      // Operations
+      modal.appendChild(el("div", "modal-group", "Operations"));
+      const ophead = el("div", "modal-row modal-chead");
+      ophead.appendChild(el("span", "modal-input modal-colh", "Name"));
+      ophead.appendChild(el("span", "modal-amt modal-colh", "Fee $/mo"));
+      ophead.appendChild(el("span", "modal-delsp", ""));
+      modal.appendChild(ophead);
+      (state.operations || []).forEach((o) => {
+        const row = el("div", "modal-row");
+        row.appendChild(textInput(o.name, "modal-input", "Name", (v) => { o.name = v; }));
+        row.appendChild(numInput(o.feeMonthly, "modal-input modal-amt", (v) => { o.feeMonthly = v; }));
+        const del = el("button", "tiny danger modal-delbtn", "✕");
+        del.title = "Remove operations entity";
+        del.onclick = () => { state.operations = state.operations.filter((x) => x !== o); build(); };
+        row.appendChild(del);
+        modal.appendChild(row);
+      });
+      const addOps = el("button", "tiny modal-add", "+ Add Operations");
+      addOps.onclick = () => {
+        if (!state.operations) state.operations = [];
+        state.operations.push({ id: generateId("ops"), name: "Operations", feeMonthly: 5000 });
+        build();
+      };
+      modal.appendChild(addOps);
 
       // Investors
       modal.appendChild(el("div", "modal-group", "Investors"));
@@ -672,7 +695,6 @@
   }
 
   function render(pulse) {
-    refreshStewardSet();
     app.innerHTML = "";
     app.appendChild(fundingAndMachineSection(pulse));
     app.appendChild(pipelineSection());
@@ -896,7 +918,6 @@
       return x;
     };
     legend.appendChild(li(COLORS.investor, "Investors", groupOwnership(v, "investor")));
-    legend.appendChild(li(COLORS.mop, "MoP", groupOwnership(v, "mop")));
     legend.appendChild(li(COLORS.contributor, "Contributors", groupOwnership(v, "contributor")));
     legend.appendChild(li(COLORS.unallocated, "Unallocated", Math.max(0, 100 - earnedOwnership(v))));
     metrics.appendChild(legend);
@@ -968,8 +989,8 @@
         if (totalPts === 0) {
           arc(a0, a1, COLORS.unallocated, slice.status === "active");
         } else {
-          // sub-split by group: investor, mop, contributor
-          const groups = ["investor", "mop", "contributor"];
+          // sub-split by group: investor, contributor
+          const groups = ["investor", "contributor"];
           let ga = a0;
           groups.forEach((g) => {
             let gp = 0;
@@ -1015,7 +1036,7 @@
   function spinoutSection() {
     const sec = el("div", "section");
     sec.appendChild(el("h2", null, "Spinout LLCs"));
-    sec.appendChild(el("p", "sub", "At spinout, BSSS ownership converts into formal ownership. The LLC pays MoP a stewardship fee; profit flows to owners."));
+    sec.appendChild(el("p", "sub", "At spinout, BSSS ownership converts into formal ownership. The LLC pays Operations a stewardship fee; profit flows to owners."));
 
     if (!state.spinouts.length) {
       sec.appendChild(el("div", "empty", "No spinouts yet. Grow a venture to $5k MRR with positive cash flow, repeatable acquisition, a stable product and ≤10 ops hours/week."));
@@ -1042,7 +1063,7 @@
     row("MRR", fmtMoney(llc.mrr));
     row("Est. valuation", fmtMoney(assetValuation(llc.mrr)));
     row("Operating expenses", fmtMoney(llc.operatingExpenses));
-    row(`MoP stewardship (${llc.mopStewardshipFeePercent}%)`, fmtMoney(llc.stewardshipFee));
+    row(`Operations stewardship (${llc.mopStewardshipFeePercent}%)`, fmtMoney(llc.stewardshipFee));
     row("Est. monthly profit", fmtMoney(llc.profit));
     card.appendChild(t);
 
@@ -1071,13 +1092,14 @@
   // ---- Section 5: Simulated cap table ----
   function assetValuation(mrr) { return Math.round(mrr * 12 * VALUATION_ARR_MULTIPLE); }
 
-  // Everyone who can hold value or earn cash in the model. The steward (Ministry
-  // of Product) both holds BSSS equity and collects the LLC stewardship fees.
+  // Everyone who can hold value or earn cash in the model.
   function holderList() {
     const list = [];
-    state.investors.forEach((i) => list.push({ id: i.id, name: i.name, type: "Investor", group: "investor", steward: false, fundedMonthly: 0 }));
+    state.investors.forEach((i) => list.push({ id: i.id, name: i.name, type: "Investor", group: "investor", isOps: false, fundedMonthly: 0, feeMonthly: 0 }));
     state.contributors.forEach((c) =>
-      list.push({ id: c.id, name: c.name, type: c.role || "Contributor", group: isSteward(c) ? "mop" : "contributor", steward: isSteward(c), fundedMonthly: c.fundedMonthly || 0 }));
+      list.push({ id: c.id, name: c.name, type: c.role || "Contributor", group: "contributor", isOps: false, fundedMonthly: c.fundedMonthly || 0, feeMonthly: 0 }));
+    (state.operations || []).forEach((o) =>
+      list.push({ id: o.id, name: o.name, type: "Operations", group: "mop", isOps: true, fundedMonthly: 0, feeMonthly: o.feeMonthly || 0 }));
     return list;
   }
 
@@ -1110,7 +1132,7 @@
     sec.appendChild(el("h2", null, "Simulated Cap Table"));
     sec.appendChild(el("p", "sub",
       "Who owns what, what each stake is worth on paper, and how much cash each has made. " +
-      "Valuation is illustrative (≈ 5× ARR). Funded = cumulative cash the VSC1 fund has paid a contributor; " +
+      "Valuation is illustrative (≈ 5× ARR). Funded = cumulative cash the VSC1 fund has paid a contributor or operations entity; " +
       "Distributions = profit + stewardship fees from spun-out LLCs."));
 
     const assets = assetList();
@@ -1167,18 +1189,24 @@
       const tdName = `<td>${sw}${h.name}</td>`;
       const tdType = `<td><span class="status-pill">${h.type}</span></td>`;
 
-      const chips = holdings.map((x) =>
-        `<span class="ct-hold ${x.spun ? "spun" : ""}">${x.name} ${fmtPct(x.pct)} · ${fmtMoney(x.val)}</span>`).join(" ");
-      const notes = [];
-      if (h.fundedMonthly) notes.push(`funded ${fmtMoney(h.fundedMonthly)}/mo by the fund`);
-      if (h.steward) notes.push("+ 10% LLC stewardship fees");
-      const noteHtml = notes.length ? `<span class="ct-note">${notes.join(" · ")}</span>` : "";
-      let hold;
-      if (chips || noteHtml) hold = "<td>" + (chips ? chips + " " : "") + noteHtml + "</td>";
-      else hold = `<td><span class="ct-note">no value-bearing holdings yet</span></td>`;
+      let hold, tdEq;
+      if (h.isOps) {
+        // Operations: no BSSS equity; show fee note
+        const noteHtml = `<span class="ct-note">charges ${fmtMoney(h.feeMonthly)}/mo from the fund · + 10% LLC stewardship fees</span>`;
+        hold = `<td>${noteHtml}</td>`;
+        tdEq = `<td class='r'>—</td>`;
+      } else {
+        const chips = holdings.map((x) =>
+          `<span class="ct-hold ${x.spun ? "spun" : ""}">${x.name} ${fmtPct(x.pct)} · ${fmtMoney(x.val)}</span>`).join(" ");
+        const notes = [];
+        if (h.fundedMonthly) notes.push(`funded ${fmtMoney(h.fundedMonthly)}/mo by the fund`);
+        const noteHtml = notes.length ? `<span class="ct-note">${notes.join(" · ")}</span>` : "";
+        if (chips || noteHtml) hold = "<td>" + (chips ? chips + " " : "") + noteHtml + "</td>";
+        else hold = `<td><span class="ct-note">no value-bearing holdings yet</span></td>`;
+        tdEq = `<td class='r'>${equity > 0 ? fmtMoney(equity) : "—"}</td>`;
+      }
 
       const total = equity + funded + dist;
-      const tdEq = `<td class='r'>${equity > 0 ? fmtMoney(equity) : "—"}</td>`;
       const tdFunded = `<td class='r'>${funded > 0 ? fmtMoney(funded) : "—"}</td>`;
       const tdDist = `<td class='r'>${dist > 0 ? fmtMoney(dist) : "—"}</td>`;
       const tdTot = `<td class='r strong'>${total > 0 ? fmtMoney(total) : "—"}</td>`;
@@ -1230,7 +1258,7 @@
     const grid = el("div", "explain");
     const cards = [
       ["VSC1", "The first venture studio cohort. Investors fund the cohort, not Ministry of Product itself. The cohort funds one year of focused venture creation."],
-      ["MoP", "Ministry of Product is the steward and operating system. It receives monthly operating funds from the cohort and uses them to validate, build, launch, and grow ventures."],
+      ["Operations", "Ministry of Product runs the studio as Operations. It charges a monthly fee from the cohort fund (and a 10% fee on spun-out LLCs) to validate, build, launch, and grow ventures — but earns no BSSS equity itself."],
       ["Ventures", "Ventures move from Idea to Stable. Each stage has a fixed BSSS ownership slice. Contributors and investors earn portions of those slices through points and capital."],
       ["BSSS", "Big Slice / Small Slice. Each stage opens a Big Slice with a fixed %. Your Small Slice = your points ÷ total points in that slice. Completed slices lock and can't be diluted."],
       ["Spinouts", "At $5k MRR with positive cash flow, repeatable acquisition, a stable product and ≤10 mgmt hrs/week, a venture spins out into an LLC and BSSS becomes formal ownership."],
