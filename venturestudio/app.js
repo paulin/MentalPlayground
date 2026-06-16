@@ -42,6 +42,9 @@
     targetARR: 1800000,
   };
 
+  // Illustrative valuation: a venture is worth ~5x its annual recurring revenue.
+  const VALUATION_ARR_MULTIPLE = 5;
+
   // Ownership group colors (per spec).
   const COLORS = {
     investor: "#4f8cff", // blue
@@ -103,17 +106,31 @@
   }
 
   function allocatedPercent(venture) {
-    // Sum of slicePercent for active + completed slices (the part that has filled).
+    // Sum of slicePercent for active + completed slices (stages that have opened).
     return venture.slices.reduce(
       (t, s) => t + (s.status === "planned" ? 0 : s.slicePercent),
       0
     );
   }
 
-  // Map a participant id to an ownership group.
+  // Ownership actually earned so far (points have been allocated). An active slice
+  // that just opened with no points yet is still unallocated.
+  function earnedOwnership(venture) {
+    return groupOwnership(venture, "investor") +
+      groupOwnership(venture, "mop") +
+      groupOwnership(venture, "contributor");
+  }
+
+  // Map a participant id to an ownership group. Steward-role contributors count
+  // as the MoP/steward portion; everyone else is a contributor.
+  let stewardSet = new Set();
+  function refreshStewardSet() {
+    stewardSet = new Set((state && state.contributors ? state.contributors : [])
+      .filter((c) => c.role === "steward").map((c) => c.id));
+  }
   function participantGroup(pid) {
     if (pid === "investor_pool") return "investor";
-    if (pid === "mop" || pid === "steward") return "mop";
+    if (pid === "mop" || pid === "steward" || stewardSet.has(pid)) return "mop";
     return "contributor";
   }
 
@@ -136,7 +153,7 @@
       },
       mop: { name: "Ministry of Product", monthlyRevenueFromCohort: 0, totalReceived: 0 },
       investors: [
-        { id: "mj", name: "MJ", contributionAmount: 50000, cohortShare: 0 },
+        { id: "mj", name: "Investor 1", contributionAmount: 50000, cohortShare: 0 },
         { id: "investor2", name: "Investor 2", contributionAmount: 100000, cohortShare: 0 },
         { id: "investor3", name: "Investor 3", contributionAmount: 150000, cohortShare: 0 },
       ],
@@ -153,6 +170,7 @@
       spinouts: [],
       ideaPointer: 0,
       log: [],
+      earnings: {}, // participantId -> cumulative realized cash
     };
     recomputeCohortShares(state);
     return state;
@@ -238,18 +256,35 @@
     const active = venture.slices.find((s) => s.status === "active");
     if (!active) return;
     // Steward (MoP) leads, contributors build, investor capital backs the work.
-    addPoints(active, "mop", 1000);
+    const stewards = state.contributors.filter((c) => c.role === "steward");
+    const perSteward = stewards.length ? 1000 / stewards.length : 0;
+    stewards.forEach((c) => { addPoints(active, c.id, perSteward); c.pointsEarned += perSteward; });
     // distribute contributor points across non-steward contributors
     const contribs = state.contributors.filter((c) => c.role !== "steward");
     const per = contribs.length ? 500 / contribs.length : 0;
     contribs.forEach((c) => { addPoints(active, c.id, per); c.pointsEarned += per; });
     addPoints(active, "investor_pool", 500);
-    const steward = state.contributors.find((c) => c.role === "steward");
-    if (steward) steward.pointsEarned += 1000;
   }
 
   function addPoints(slice, pid, pts) {
     slice.points[pid] = (slice.points[pid] || 0) + pts;
+  }
+
+  function addEarnings(state, pid, amount) {
+    if (!state.earnings) state.earnings = {};
+    state.earnings[pid] = (state.earnings[pid] || 0) + amount;
+  }
+
+  // Pay out one month of a spun-out LLC's economics: stewardship fee to the MoP
+  // entity, and the remaining profit to equity holders by ownership %.
+  function distributeLLCEarnings(state, llc) {
+    addEarnings(state, "mop_entity", llc.stewardshipFee);
+    if (llc.profit > 0) {
+      llc.ownership.forEach((o) => {
+        if (!o.id) return; // skip the unallocated row
+        addEarnings(state, o.id, llc.profit * (o.percent / 100));
+      });
+    }
   }
 
   function advanceVentureStage(venture) {
@@ -333,6 +368,7 @@
 
   function advanceOneMonth(state) {
     if (state.vsc1.status === "fundraising") return;
+    refreshStewardSet();
     state.currentMonth += 1;
     state.mop.monthlyRevenueFromCohort = 0;
 
@@ -346,25 +382,37 @@
     maybeAddNewIdea(state);
     state.ventures.forEach((v) => applyMonthlyProgress(v, state));
 
-    // grow revenue for spun-out LLCs too
+    // grow revenue for spun-out LLCs, then pay out the month's economics
     state.spinouts.forEach((llc) => {
       llc.mrr = Math.round(llc.mrr * (1 + rand(0.02, 0.08)));
       recomputeLLCFinancials(llc, state);
+      distributeLLCEarnings(state, llc);
     });
   }
 
   // -------------------------------------------------------------- Spinout
   function calculateFinalOwnership(venture, state) {
     const rows = [];
-    rows.push({ name: "Investor Pool", group: "investor", percent: groupOwnership(venture, "investor") });
-    rows.push({ name: "MoP / Steward", group: "mop", percent: groupOwnership(venture, "mop") });
-    // contributors broken out individually
-    state.contributors.filter((c) => c.role !== "steward").forEach((c) => {
-      const pct = participantOwnership(venture, c.id);
-      if (pct > 0) rows.push({ name: c.name, group: "contributor", percent: pct });
+    const investorGroup = groupOwnership(venture, "investor");
+    // each investor individually = cohort share of the investor pool
+    state.investors.forEach((inv) => {
+      const pct = inv.cohortShare * investorGroup;
+      if (pct > 0) rows.push({ id: inv.id, name: inv.name, group: "investor", percent: pct });
     });
-    const unalloc = 100 - allocatedPercent(venture);
-    if (unalloc > 0) rows.push({ name: "Unallocated (future work)", group: "unallocated", percent: unalloc });
+    // steward(s) and contributors individually
+    state.contributors.forEach((c) => {
+      const pct = participantOwnership(venture, c.id);
+      if (pct > 0) {
+        rows.push({
+          id: c.id,
+          name: c.name + (c.role === "steward" ? " (Steward)" : ""),
+          group: c.role === "steward" ? "mop" : "contributor",
+          percent: pct,
+        });
+      }
+    });
+    const unalloc = Math.max(0, 100 - rows.reduce((a, r) => a + r.percent, 0));
+    if (unalloc > 0.05) rows.push({ id: null, name: "Unallocated (future work)", group: "unallocated", percent: unalloc });
     return rows;
   }
 
@@ -407,17 +455,10 @@
 
   function recomputeLLCFinancials(llc, state) {
     const feeFrac = llc.mopStewardshipFeePercent / 100;
+    // operating expenses scale with revenue so older LLCs stay realistic
+    llc.operatingExpenses = Math.round(llc.mrr * 0.35 + 800);
     llc.stewardshipFee = Math.round(llc.mrr * feeFrac);
     llc.profit = Math.round(calculateLLCProfit(llc.mrr, llc.operatingExpenses, feeFrac));
-    // investor pool distribution share of monthly profit
-    const investorRow = llc.ownership.find((o) => o.group === "investor");
-    llc.distributions = [];
-    if (investorRow && llc.profit > 0) {
-      llc.distributions.push({
-        name: "Investor Pool (monthly)",
-        amount: Math.round(llc.profit * (investorRow.percent / 100)),
-      });
-    }
   }
 
   function pushLog(state, msg) {
@@ -438,6 +479,7 @@
       const s = JSON.parse(raw);
       // bump id counter so new ids don't collide
       _id = 100000;
+      if (!s.earnings) s.earnings = {};
       return s;
     } catch (e) { return null; }
   }
@@ -458,10 +500,12 @@
   }
 
   function render(pulse) {
+    refreshStewardSet();
     app.innerHTML = "";
     app.appendChild(fundingAndMachineSection(pulse));
     app.appendChild(pipelineSection());
     app.appendChild(spinoutSection());
+    app.appendChild(capTableSection());
     app.appendChild(logSection());
     app.appendChild(explainSection());
   }
@@ -663,7 +707,7 @@
     m("Price", fmtMoney(v.pricePerCustomer) + "/mo");
     m("Ops load", v.opsHoursPerWeek + " hrs/wk");
     m("Cash flow", v.cashFlowPositive ? "positive" : "negative");
-    m("Filled", fmtPct(allocatedPercent(v)));
+    m("Filled", fmtPct(earnedOwnership(v)));
 
     const legend = el("div", "own-legend");
     legend.style.marginTop = "8px";
@@ -678,7 +722,7 @@
     legend.appendChild(li(COLORS.investor, "Investors", groupOwnership(v, "investor")));
     legend.appendChild(li(COLORS.mop, "MoP", groupOwnership(v, "mop")));
     legend.appendChild(li(COLORS.contributor, "Contributors", groupOwnership(v, "contributor")));
-    legend.appendChild(li(COLORS.unallocated, "Unallocated", 100 - allocatedPercent(v)));
+    legend.appendChild(li(COLORS.unallocated, "Unallocated", Math.max(0, 100 - earnedOwnership(v))));
     metrics.appendChild(legend);
 
     body.appendChild(metrics);
@@ -785,7 +829,7 @@
     label.setAttribute("text-anchor", "middle");
     label.setAttribute("font-size", "12");
     label.setAttribute("fill", "#f0f2f7");
-    label.textContent = Math.round(allocatedPercent(v)) + "%";
+    label.textContent = Math.round(earnedOwnership(v)) + "%";
     svg.appendChild(label);
 
     return svg;
@@ -820,18 +864,19 @@
       tr.appendChild(td1); tr.appendChild(td2); t.appendChild(tr);
     };
     row("MRR", fmtMoney(llc.mrr));
+    row("Est. valuation", fmtMoney(assetValuation(llc.mrr)));
     row("Operating expenses", fmtMoney(llc.operatingExpenses));
     row(`MoP stewardship (${llc.mopStewardshipFeePercent}%)`, fmtMoney(llc.stewardshipFee));
     row("Est. monthly profit", fmtMoney(llc.profit));
-    if (llc.distributions[0]) row(llc.distributions[0].name, fmtMoney(llc.distributions[0].amount));
     card.appendChild(t);
 
     const ot = document.createElement("table");
     ot.className = "own-table";
     const th = document.createElement("tr");
     const tha = document.createElement("th"); tha.textContent = "Owner";
-    const thb = document.createElement("th"); thb.textContent = "Ownership"; thb.style.textAlign = "right";
-    th.appendChild(tha); th.appendChild(thb); ot.appendChild(th);
+    const thb = document.createElement("th"); thb.textContent = "Owns"; thb.style.textAlign = "right";
+    const thc = document.createElement("th"); thc.textContent = "Profit/mo"; thc.style.textAlign = "right";
+    th.appendChild(tha); th.appendChild(thb); th.appendChild(thc); ot.appendChild(th);
     llc.ownership.forEach((o) => {
       const tr = document.createElement("tr");
       const td1 = document.createElement("td");
@@ -839,10 +884,143 @@
       sw.style.marginRight = "6px";
       td1.appendChild(sw); td1.appendChild(document.createTextNode(o.name));
       const td2 = document.createElement("td"); td2.className = "v"; td2.textContent = fmtPct(o.percent);
-      tr.appendChild(td1); tr.appendChild(td2); ot.appendChild(tr);
+      const td3 = document.createElement("td"); td3.className = "v";
+      td3.textContent = o.id && llc.profit > 0 ? fmtMoney(llc.profit * (o.percent / 100)) : "—";
+      tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); ot.appendChild(tr);
     });
     card.appendChild(ot);
     return card;
+  }
+
+  // ---- Section 5: Simulated cap table ----
+  function assetValuation(mrr) { return Math.round(mrr * 12 * VALUATION_ARR_MULTIPLE); }
+
+  // Everyone who can hold value or earn cash in the model.
+  function holderList() {
+    const list = [];
+    state.investors.forEach((i) => list.push({ id: i.id, name: i.name, type: "Investor", group: "investor" }));
+    state.contributors.forEach((c) =>
+      list.push({ id: c.id, name: c.name, type: c.role === "steward" ? "Steward" : "Contributor", group: c.role === "steward" ? "mop" : "contributor" }));
+    list.push({ id: "mop_entity", name: "Ministry of Product", type: "Entity", group: "mop" });
+    return list;
+  }
+
+  // Live ventures (with revenue) plus spun-out LLCs — the things that have value.
+  function assetList() {
+    const assets = [];
+    state.ventures.forEach((v) => {
+      if (v.status === "killed" || v.status === "spun_out") return;
+      assets.push({ name: v.name, mrr: v.mrr, spun: false, venture: v });
+    });
+    state.spinouts.forEach((llc) => assets.push({ name: llc.name, mrr: llc.mrr, spun: true, llc: llc }));
+    return assets;
+  }
+
+  function holderAssetPercent(holder, asset) {
+    if (holder.id === "mop_entity") return 0; // entity earns fees, holds no BSSS equity
+    if (asset.spun) {
+      const row = asset.llc.ownership.find((o) => o.id === holder.id);
+      return row ? row.percent : 0;
+    }
+    const v = asset.venture;
+    if (holder.type === "Investor") {
+      const inv = state.investors.find((i) => i.id === holder.id);
+      return (inv ? inv.cohortShare : 0) * groupOwnership(v, "investor");
+    }
+    return participantOwnership(v, holder.id);
+  }
+
+  function capTableSection() {
+    const sec = el("div", "section");
+    sec.appendChild(el("h2", null, "Simulated Cap Table"));
+    sec.appendChild(el("p", "sub",
+      "Who owns what, what each stake is worth on paper, and how much cash each has actually made. " +
+      "Valuation is illustrative (≈ 5× ARR); cash earned is the cumulative profit distributions and stewardship fees paid out as months advance."));
+
+    const assets = assetList();
+    const holders = holderList();
+
+    // --- Venture valuation strip ---
+    const valWrap = el("div", "panel");
+    valWrap.appendChild(el("h3", "ct-h3", "Venture values"));
+    if (!assets.length) {
+      valWrap.appendChild(el("div", "hint", "No ventures with value yet — advance months to grow revenue."));
+    } else {
+      const vt = document.createElement("table");
+      vt.className = "captable";
+      vt.innerHTML = "<tr><th>Venture</th><th>State</th><th class='r'>MRR</th><th class='r'>Est. valuation</th></tr>";
+      assets.forEach((a) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${a.name}</td><td>${a.spun ? "<span class='tag-spun'>spun out</span>" : "pipeline"}</td>` +
+          `<td class='r'>${fmtMoney(a.mrr)}</td><td class='r'>${fmtMoney(assetValuation(a.mrr))}</td>`;
+        vt.appendChild(tr);
+      });
+      valWrap.appendChild(vt);
+    }
+    sec.appendChild(valWrap);
+
+    // --- Holder table ---
+    const wrap = el("div", "panel");
+    wrap.style.marginTop = "16px";
+    wrap.appendChild(el("h3", "ct-h3", "Holders"));
+    const scroll = el("div", "ct-scroll");
+    const t = document.createElement("table");
+    t.className = "captable";
+    t.innerHTML =
+      "<tr><th>Holder</th><th>Type</th><th>Holdings (ownership · paper value)</th>" +
+      "<th class='r'>Equity value</th><th class='r'>Cash earned</th><th class='r'>Total</th></tr>";
+
+    let totEquity = 0, totCash = 0;
+    holders.forEach((h) => {
+      const holdings = [];
+      let equity = 0;
+      assets.forEach((a) => {
+        const pct = holderAssetPercent(h, a);
+        if (pct > 0.05) {
+          const val = (pct / 100) * assetValuation(a.mrr);
+          equity += val;
+          holdings.push({ name: a.name, pct, val, spun: a.spun });
+        }
+      });
+      const cash = (state.earnings && state.earnings[h.id]) || 0;
+      totEquity += equity; totCash += cash;
+
+      const tr = document.createElement("tr");
+      const sw = `<span class="swatch" style="background:${COLORS[h.group] || COLORS.unallocated};margin-right:6px"></span>`;
+      const tdName = `<td>${sw}${h.name}</td>`;
+      const tdType = `<td><span class="status-pill">${h.type}</span></td>`;
+
+      let hold;
+      if (h.id === "mop_entity") {
+        hold = `<td><span class="ct-note">10% stewardship fee on every spun-out LLC · ${fmtMoney(state.mop.totalReceived)} operating budget received (cost-recovery)</span></td>`;
+      } else if (!holdings.length) {
+        hold = `<td><span class="ct-note">no value-bearing holdings yet</span></td>`;
+      } else {
+        hold = "<td>" + holdings.map((x) =>
+          `<span class="ct-hold ${x.spun ? "spun" : ""}">${x.name} ${fmtPct(x.pct)} · ${fmtMoney(x.val)}</span>`).join(" ") + "</td>";
+      }
+      const total = equity + cash;
+      const tdEq = `<td class='r'>${equity > 0 ? fmtMoney(equity) : "—"}</td>`;
+      const tdCash = `<td class='r'>${cash > 0 ? fmtMoney(cash) : "—"}</td>`;
+      const tdTot = `<td class='r strong'>${total > 0 ? fmtMoney(total) : "—"}</td>`;
+      tr.innerHTML = tdName + tdType + hold + tdEq + tdCash + tdTot;
+      t.appendChild(tr);
+    });
+
+    const totRow = document.createElement("tr");
+    totRow.className = "ct-total";
+    totRow.innerHTML =
+      `<td colspan="3">Totals (held equity + realized cash)</td>` +
+      `<td class='r'>${fmtMoney(totEquity)}</td><td class='r'>${fmtMoney(totCash)}</td>` +
+      `<td class='r strong'>${fmtMoney(totEquity + totCash)}</td>`;
+    t.appendChild(totRow);
+
+    scroll.appendChild(t);
+    wrap.appendChild(scroll);
+    wrap.appendChild(el("p", "hint",
+      "Equity value is unrealized paper value of BSSS stakes. Cash earned accrues only after a venture spins out and starts paying monthly profit. Stewards are also compensated from MoP's operating budget (not shown as equity)."));
+    sec.appendChild(wrap);
+    return sec;
   }
 
   // ---- Activity log ----

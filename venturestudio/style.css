@@ -282,6 +282,60 @@ button.tiny { padding: 4px 9px; font-size: 12px; }
   text-align: center;
 }
 
+/* --- Cap table ----------------------------------------------------------- */
+.ct-h3 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9aa3b5;
+}
+.ct-scroll { overflow-x: auto; }
+table.captable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+table.captable th {
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #717a8c;
+  padding: 4px 10px 6px 0;
+  border-bottom: 1px solid #2e3342;
+  white-space: nowrap;
+}
+table.captable td {
+  padding: 7px 10px 7px 0;
+  border-bottom: 1px solid #21242e;
+  vertical-align: top;
+  color: #d8dce6;
+}
+table.captable td.r, table.captable th.r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.captable td.strong { color: #8fd18f; font-weight: 600; }
+tr.ct-total td {
+  border-top: 1px solid #2e3342;
+  border-bottom: none;
+  color: #9aa3b5;
+  font-size: 12px;
+  padding-top: 9px;
+}
+.ct-hold {
+  display: inline-block;
+  background: #232a36;
+  border: 1px solid #2e3a48;
+  border-radius: 4px;
+  padding: 1px 7px;
+  margin: 0 4px 4px 0;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: #c2c8d4;
+}
+.ct-hold.spun { border-color: #2f4a55; color: #9fe0ff; }
+.ct-note { font-size: 11px; color: #717a8c; }
+.tag-spun { color: #9fe0ff; font-size: 11px; }
+
 /* --- Explanation copy ---------------------------------------------------- */
 .explain {
   display: grid;
