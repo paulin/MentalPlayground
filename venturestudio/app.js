@@ -859,16 +859,42 @@
   // ---- Section 1+2: Funding tank + monthly machine ----
   function fundingAndMachineSection(pulse) {
     const sec = el("div", "section");
-    sec.appendChild(el("h2", null, "The Studio Machine"));
-    sec.appendChild(el("p", "sub", "Investors fund the cohort. The cohort pays MoP to operate. MoP turns money and focus into ventures."));
 
-    const grid = el("div", "top-grid");
-
-    // --- Funding panel ---
-    const fp = el("div", "panel");
     const v = state.vsc1;
     const pct = clamp(Math.round((v.fundedAmount / v.raiseTarget) * 100), 0, 100);
     const statusCls = v.status === "active" ? "active" : v.status === "complete" ? "complete" : "";
+
+    // --- Top action bar ---
+    const actionBar = el("div", "action-bar");
+
+    const actionLeft = el("div", "action-bar-left");
+    actionLeft.appendChild(el("h2", "action-bar-title", "The Studio Machine"));
+    actionLeft.appendChild(el("p", "action-bar-sub", "Investors fund the cohort. The cohort pays MoP to operate. MoP turns money and focus into ventures."));
+    actionBar.appendChild(actionLeft);
+
+    const actionRight = el("div", "action-bar-right");
+    actionRight.appendChild(el("span", "month-label", `Month ${state.currentMonth}`));
+
+    const bAdvance = el("button", "primary", "Advance One Month ▶");
+    bAdvance.disabled = v.status === "fundraising";
+    bAdvance.onclick = () => { advanceOneMonth(state); save(); render(true); };
+    actionRight.appendChild(bAdvance);
+
+    const bNames = el("button", null, "Edit Participants ✎");
+    bNames.onclick = openEditModal;
+    actionRight.appendChild(bNames);
+
+    const bReset = el("button", "danger", "Reset");
+    bReset.onclick = () => { if (confirm("Reset the whole simulation?")) reset(); };
+    actionRight.appendChild(bReset);
+
+    actionBar.appendChild(actionRight);
+    sec.appendChild(actionBar);
+
+    const grid = el("div", "top-grid");
+
+    // --- Funding panel (left, ~360px) ---
+    const fp = el("div", "panel");
 
     const tankRow = el("div", "tank-row");
     const tank = el("div", "tank");
@@ -927,21 +953,8 @@
     bFill.disabled = v.status !== "fundraising";
     bFill.onclick = () => { fillVSC1(state); save(); render(); };
 
-    const bAdvance = el("button", "primary", "Advance One Month ▶");
-    bAdvance.disabled = v.status === "fundraising";
-    bAdvance.onclick = () => { advanceOneMonth(state); save(); render(true); };
-
-    const bNames = el("button", null, "Edit Participants ✎");
-    bNames.onclick = openEditModal;
-
-    const bReset = el("button", "danger", "Reset");
-    bReset.onclick = () => { if (confirm("Reset the whole simulation?")) reset(); };
-
     btns.appendChild(bAddInv);
     btns.appendChild(bFill);
-    btns.appendChild(bAdvance);
-    btns.appendChild(bNames);
-    btns.appendChild(bReset);
     fp.appendChild(btns);
 
     if (v.status === "fundraising") {
@@ -950,43 +963,78 @@
 
     grid.appendChild(fp);
 
-    // --- Machine flow panel ---
-    const mp = el("div", "panel machine");
-    const flow = el("div", "flow");
+    // --- Funnel panel (right, large area) ---
+    const funnelPanel = el("div", "panel funnel-panel");
 
-    const nVSC = el("div", "flow-node");
-    nVSC.appendChild(el("h3", null, "VSC1 Capital"));
-    nVSC.appendChild(el("div", "big", fmtMoney(v.remainingCapital)));
-    nVSC.appendChild(el("div", "small", "remaining"));
-    flow.appendChild(nVSC);
+    // Compute per-stage venture counts
+    const killedCount = state.ventures.filter((x) => x.status === "killed").length;
+    const spunOutCount = state.spinouts.length;
 
-    const a1 = el("div", "flow-arrow" + (pulse ? " pulse" : ""), "→");
-    flow.appendChild(a1);
+    const funnelWrap = el("div", "funnel");
 
-    const draw = state.lastDraw || { capital: 0, operational: 0 };
-    const nMoP = el("div", "flow-node");
-    nMoP.appendChild(el("h3", null, "Funding drawn"));
-    nMoP.appendChild(el("div", "big", fmtMoney(draw.capital + draw.operational)));
-    nMoP.appendChild(el("div", "small", "this month · cap " + fmtMoney(draw.capital) + " · op " + fmtMoney(draw.operational)));
-    flow.appendChild(nMoP);
+    STAGES.forEach((stage, idx) => {
+      const col = el("div", "funnel-stage");
 
-    const a2 = el("div", "flow-arrow" + (pulse ? " pulse" : ""), "→");
-    flow.appendChild(a2);
+      // Stage header label
+      const lbl = el("div", "funnel-stage-label");
+      lbl.appendChild(el("span", "funnel-stage-id", stage.id));
+      lbl.appendChild(el("span", "funnel-stage-name", stage.name));
+      col.appendChild(lbl);
 
-    const activeVentures = state.ventures.filter((x) => x.status === "active" || x.status === "idea").length;
-    const nV = el("div", "flow-node");
-    nV.appendChild(el("h3", null, "Ventures"));
-    nV.appendChild(el("div", "big", String(activeVentures)));
-    nV.appendChild(el("div", "small", "in pipeline · " + state.spinouts.length + " spun out"));
-    flow.appendChild(nV);
+      // Funnel silhouette height: wide on left, narrow on right (RL1=100%, RL10=20%)
+      const heightPct = Math.round(100 - (idx / (STAGES.length - 1)) * 80);
+      const silhouette = el("div", "funnel-silhouette");
+      silhouette.style.height = heightPct + "%";
 
-    mp.appendChild(flow);
-    mp.appendChild(el("div", "machine-note",
-      "Each month the fund pays out only what participants draw — capital cost (contributors / development) and operational cost (operations / overhead). " +
-      "Those participants give up BSSS shares to the investors in exchange. If nobody draws, the fund holds and investors gain nothing."));
+      // Ventures at this stage (active or idea or stalled)
+      const venturesHere = state.ventures.filter(
+        (x) => x.stage === stage.id && (x.status === "idea" || x.status === "active" || x.status === "stalled")
+      );
 
-    grid.appendChild(mp);
+      venturesHere.forEach((vent) => {
+        const chip = el("div", "funnel-chip funnel-chip--" + vent.status, vent.name);
+        silhouette.appendChild(chip);
+      });
+
+      col.appendChild(silhouette);
+      funnelWrap.appendChild(col);
+    });
+
+    // Spun-out arrow at far right
+    const spinoutArrow = el("div", "funnel-spinout-arrow");
+    spinoutArrow.appendChild(el("div", "funnel-spinout-icon", "→"));
+    spinoutArrow.appendChild(el("div", "funnel-spinout-count", `${spunOutCount} spun out`));
+    funnelWrap.appendChild(spinoutArrow);
+
+    funnelPanel.appendChild(funnelWrap);
+
+    // Attrition + caption row
+    const funnelMeta = el("div", "funnel-meta");
+    funnelMeta.appendChild(el("span", "funnel-killed", `✗ ${killedCount} killed`));
+    funnelMeta.appendChild(el("span", "funnel-caption", "Many ideas enter at RL1 — only a few survive to spin out as stable LLCs."));
+    funnelPanel.appendChild(funnelMeta);
+
+    grid.appendChild(funnelPanel);
     sec.appendChild(grid);
+
+    // --- Spun-out strip (full width, below grid) ---
+    const spunStrip = el("div", "spunout-strip");
+    if (state.spinouts.length === 0) {
+      spunStrip.appendChild(el("p", "spunout-empty", "No spinouts yet — grow a venture to spin it out."));
+    } else {
+      state.spinouts.forEach((llc) => {
+        const card = el("div", "spunout-card");
+        card.appendChild(el("div", "spunout-name", llc.name));
+        const meta = el("div", "spunout-meta");
+        meta.appendChild(el("span", "spunout-profit", `+${fmtMoney(llc.profit || 0)}/mo`));
+        meta.appendChild(el("span", "spunout-sep", "·"));
+        meta.appendChild(el("span", "spunout-cost", `−${fmtMoney(llc.operatingExpenses || 0)}/mo`));
+        card.appendChild(meta);
+        spunStrip.appendChild(card);
+      });
+    }
+    sec.appendChild(spunStrip);
+
     return sec;
   }
 

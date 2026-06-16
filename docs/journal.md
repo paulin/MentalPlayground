@@ -5,6 +5,23 @@ and changes.
 
 ## 2026-06-16
 
+- **MIN-799 — Improve the Studio Machine panel.** Restructured
+  `fundingAndMachineSection` (`venturestudio/app.js` + `style.css`): added a
+  full-width **action bar** (title left; "Month N" label + Advance One Month
+  (primary, top-right) + Edit Participants + Reset on the right), leaving the
+  funding panel with only Add Investor / Fill VSC1. Replaced the old 3-node flow
+  with a **left-to-right funnel** across the 10 product-pathway stages (RL1→RL10)
+  — tapering silhouette columns (wide left, narrow right) with live venture name
+  chips placed in their current stage, an "✗ N killed" attrition marker, and a
+  "→ N spun out" exit cap — so the selection funnel is shown graphically. Added a
+  full-width **spun-out strip** below showing each LLC's profit/mo (+) and cost/mo
+  (−). Verified by the implementer with Playwright against the running dev server
+  (fundraising → Fill VSC1 → advance 3 months: month label updates live, ventures
+  move across funnel stages, "1 killed" appears, Advance disabled during
+  fundraising, modal opens, tablet viewport wraps cleanly, zero JS errors) plus a
+  screenshot. Implemented by Claude Sonnet 4.6 (default tier — issue had no
+  `model:` label).
+
 - **MIN-798 — Save & reload participants as CSV.** Added Export/Import CSV to the
   Edit Participants modal so a participant configuration can be saved to a file and
   reloaded. Two pure, testable helpers in `venturestudio/app.js`:
