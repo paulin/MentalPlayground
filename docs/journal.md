@@ -5,6 +5,14 @@ and changes.
 
 ## 2026-06-16
 
+- **Blog post — Venture Studio Simulator explainer.** Added
+  `blog/2026-06-16-venture-studio-simulator.md`, a drop-in Jekyll post (front
+  matter + `_posts`-style filename) covering what the simulator models (venture
+  studio cohort, product pathway RL1–RL10, BSSS ownership), the investor buy-in /
+  give-up mechanic, capital-vs-operational costs, the monthly funnel, spinout
+  criteria, the simulated cap table, what's deliberately simplified, and the tech.
+  Plus `blog/README.md` on how to copy posts into a Jekyll site.
+
 - **MIN-802 — Venture Simulator Finishing (running ticket, rapid/inline process).**
   (1) Raise target is now an editable number input in the funding panel while
   fundraising (default $300k, open); after **Fill Fund** the target locks (shown
