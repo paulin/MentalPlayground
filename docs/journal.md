@@ -5,6 +5,22 @@ and changes.
 
 ## 2026-06-16
 
+- **MIN-798 — Save & reload participants as CSV.** Added Export/Import CSV to the
+  Edit Participants modal so a participant configuration can be saved to a file and
+  reloaded. Two pure, testable helpers in `venturestudio/app.js`:
+  `participantsToCsv(state)` (one row per contributor/operations/investor; columns
+  `category,name,role,sharePercent,fundedMonthly,giveUpPercent,contributionAmount`;
+  RFC-4180 quoting via `csvEscape`) and `csvToParticipants(text)` (tolerant parser
+  handling quoted fields + optional header, fresh ids, numeric coercion, throws on
+  empty/garbage). Export downloads via a Blob + temporary anchor; Import uses a
+  hidden file input → `FileReader` → replaces the three lists, recomputes cohort
+  shares, and rebuilds the modal in place (no auto-save, so the existing
+  Cancel/Save snapshot semantics hold). Verified with a headless round-trip
+  (3 contributors + 1 operations + 3 investors survive export→import with matching
+  numbers; comma/quote names preserved; empty/garbage CSV throws) plus a
+  render+modal smoke test. Implemented by Claude Sonnet 4.6 (default tier — issue
+  had no `model:` label).
+
 - **MIN-795 — Investors buy shares from participants; split capital vs operational
   costs.** Reworked the Venture Studio Simulator economics so investors hold **no
   base BSSS** — every participant earns the venture's shares through work and

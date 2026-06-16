@@ -487,6 +487,115 @@
     if (state.log.length > 40) state.log.pop();
   }
 
+  // ------------------------------------------------- CSV export / import helpers
+
+  function csvEscape(v) {
+    const s = String(v == null ? "" : v);
+    if (/[,"\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function participantsToCsv(st) {
+    const header = "category,name,role,sharePercent,fundedMonthly,giveUpPercent,contributionAmount";
+    const rows = [header];
+    (st.contributors || []).forEach((p) => {
+      rows.push([
+        "contributor",
+        csvEscape(p.name),
+        csvEscape(p.role),
+        csvEscape(p.sharePercent),
+        csvEscape(p.fundedMonthly),
+        csvEscape(p.giveUpPercent),
+        "",
+      ].join(","));
+    });
+    (st.operations || []).forEach((p) => {
+      rows.push([
+        "operations",
+        csvEscape(p.name),
+        csvEscape(p.role),
+        csvEscape(p.sharePercent),
+        csvEscape(p.fundedMonthly),
+        csvEscape(p.giveUpPercent),
+        "",
+      ].join(","));
+    });
+    (st.investors || []).forEach((inv) => {
+      rows.push([
+        "investor",
+        csvEscape(inv.name),
+        "",
+        "",
+        "",
+        "",
+        csvEscape(inv.contributionAmount),
+      ].join(","));
+    });
+    return rows.join("\n");
+  }
+
+  function csvToParticipants(text) {
+    // Split into non-blank lines
+    const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "");
+    if (!lines.length) throw new Error("CSV is empty");
+
+    // Parse a single CSV line respecting RFC-4180 quoting
+    function parseLine(line) {
+      const fields = [];
+      let i = 0;
+      while (i <= line.length) {
+        if (i === line.length) { fields.push(""); break; }
+        if (line[i] === '"') {
+          let val = "";
+          i++; // skip opening quote
+          while (i < line.length) {
+            if (line[i] === '"') {
+              if (line[i + 1] === '"') { val += '"'; i += 2; }
+              else { i++; break; } // closing quote
+            } else { val += line[i++]; }
+          }
+          fields.push(val);
+          if (line[i] === ",") i++;
+        } else {
+          const end = line.indexOf(",", i);
+          if (end === -1) { fields.push(line.slice(i)); i = line.length + 1; }
+          else { fields.push(line.slice(i, end)); i = end + 1; }
+        }
+      }
+      return fields;
+    }
+
+    // Detect and skip header row
+    let startRow = 0;
+    const firstFields = parseLine(lines[0]);
+    if (firstFields[0] && firstFields[0].toLowerCase() === "category") startRow = 1;
+
+    const contributors = [], operations = [], investors = [];
+    for (let r = startRow; r < lines.length; r++) {
+      const f = parseLine(lines[r]);
+      const category = (f[0] || "").trim().toLowerCase();
+      const name = (f[1] || "").trim();
+      const role = (f[2] || "").trim();
+      const sharePercent = parseFloat(f[3]) || 0;
+      const fundedMonthly = parseFloat(f[4]) || 0;
+      const giveUpPercent = parseFloat(f[5]) || 0;
+      const contributionAmount = parseFloat(f[6]) || 0;
+
+      if (category === "contributor") {
+        contributors.push({ id: generateId("c"), name, role: role || "Contributor", sharePercent, fundedMonthly, giveUpPercent, pointsEarned: 0 });
+      } else if (category === "operations") {
+        operations.push({ id: generateId("ops"), name, role: role || "Operations", sharePercent, fundedMonthly, giveUpPercent, pointsEarned: 0 });
+      } else if (category === "investor") {
+        investors.push({ id: generateId("inv"), name, contributionAmount, cohortShare: 0 });
+      }
+      // unknown/blank category rows are skipped
+    }
+
+    const total = contributors.length + operations.length + investors.length;
+    if (total === 0) throw new Error("No valid participant rows found in CSV (check category column: contributor / operations / investor)");
+    return { contributors, operations, investors };
+  }
+
   // ---------------------------------------------------------- Persistence
   let state = load() || makeInitialState();
 
@@ -583,6 +692,59 @@
         "Every participant earns a BSSS share of each venture through their work. In exchange for monthly cash drawn from the VSC1 fund, " +
         "a participant gives up a cut of the shares they earn — those shares are bought by the investors. Blank = zero. " +
         "Contributors are a capital cost (development); operations are an operational cost (overhead). Share %s should total 100."));
+
+      // CSV toolbar
+      const csvToolbar = el("div", "csv-toolbar");
+
+      const exportBtn = el("button", "tiny", "Export CSV");
+      exportBtn.title = "Download participants as a CSV file";
+      exportBtn.onclick = () => {
+        const csv = participantsToCsv(state);
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "vsc1-participants.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      };
+
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = ".csv";
+      fileInput.className = "csv-file-input";
+      fileInput.onchange = () => {
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const parsed = csvToParticipants(e.target.result);
+            state.contributors = parsed.contributors;
+            state.operations = parsed.operations;
+            state.investors = parsed.investors;
+            recomputeCohortShares(state);
+            build();
+          } catch (err) {
+            alert("Import failed: " + err.message);
+          } finally {
+            fileInput.value = "";
+          }
+        };
+        reader.readAsText(file);
+      };
+
+      const importLabel = document.createElement("label");
+      importLabel.className = "csv-import-label tiny";
+      importLabel.title = "Import participants from a CSV file";
+      importLabel.textContent = "Import CSV";
+      importLabel.appendChild(fileInput);
+
+      csvToolbar.appendChild(exportBtn);
+      csvToolbar.appendChild(importLabel);
+      modal.appendChild(csvToolbar);
 
       const totalEl = el("div", "modal-total");
       function updateTotal() {

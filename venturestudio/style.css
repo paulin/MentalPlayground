@@ -433,6 +433,33 @@ tr.ct-subhead td {
 }
 .modal-total b { font-variant-numeric: tabular-nums; }
 
+/* --- CSV import / export toolbar inside the Edit Participants modal ------- */
+.csv-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.csv-import-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  background: #2a2f3d;
+  color: #d8dce6;
+  border: 1px solid #3a4052;
+  border-radius: 5px;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.csv-import-label:hover { background: #343a4b; }
+.csv-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* --- Explanation copy ---------------------------------------------------- */
 .explain {
   display: grid;
