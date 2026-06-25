@@ -3,6 +3,65 @@
 Most recent entries first. Notes on what was done each day — decisions, ideas,
 and changes.
 
+## 2026-06-25
+
+- **MJVS AI Playtester (`mjvs/playtest.html` + `mjvs/playtest/`).** Added a tool
+  that playtests MJ Venture Studio rapidly: an agent learns the smartest set of
+  moves by running thousands of simulated games, then surfaces an optimal
+  **playbook per archetype** and a cross-archetype leaderboard.
+  - **Engine extraction (`mjvs/engine.js`).** Refactored all rules + simulation
+    out of `app.js` into a headless, DOM-free, RNG-injectable module
+    (`globalThis.MJVSEngine`, also `module.exports`). Every `Math.random` became
+    an injected `rng` so runs are reproducible and can run in a Web Worker. Added
+    agent-facing helpers: `legalMoves(state)`, pure `step(state, move, rng)`,
+    `playEpisode(...)`, and a seedable `makeRng` (mulberry32). `app.js` is now a
+    thin UI layer over the engine — the interactive game is unchanged, but the
+    rules live in one place, so a discovered playbook is replayable move-for-move
+    in the real game.
+  - **Pluggable strategies + rewards (`playtest/strategies.js`).** A `Strategy`
+    contract behind a `STRATEGIES` registry. Implemented lightweight search first:
+    an **evolutionary policy** hill-climber (primary) over a move-preference genome
+    with a `repeatDecay` trait (which prevents the degenerate trap of repeating one
+    non-progressing action), a **Monte Carlo rollouts** strategy powering the move
+    inspector, and a **random baseline**. Tabular Q-learning, DQN, and MCTS are
+    registered stubs — adding one is just implementing the contract. Reward is
+    swappable (`REWARDS`): best outcome tier (default), maximize ARR, weighted blend.
+  - **UI + worker (`playtest/`).** Training runs in a Web Worker so the UI stays
+    responsive (Stop = terminate). Live training curve (best/mean fitness),
+    outcome-tier distribution, per-archetype optimal playbook, cross-archetype
+    leaderboard, and a Monte Carlo **move inspector** that steps the best run and
+    shows each legal move's estimated value (the policy's choice highlighted).
+  - **Finding:** with the default tier objective, the evolutionary search reaches
+    **Venture Studio Champion on all five archetypes** (≈20/20 seeds), and the
+    Scale-phase MRR multipliers compound MRR far past the 90k champion threshold —
+    a balance signal worth a look.
+  - Linked from the root `index.html` MJVS card and `mjvs/README.md`. Verified the
+    engine + strategies headlessly (JavaScriptCore: 2000 random episodes terminate
+    cleanly, reproducible by seed; evolutionary beats random on every archetype;
+    worker replay matches the playbook exactly).
+
+## 2026-06-23
+
+- **New module — MJ Venture Studio (`mjvs/`).** Built a single-player, turn-based
+  venture studio game from `docs/mjvs.md` (Incumbent Failure Arbitrage Studio
+  model). The player is a Studio Principal who picks one of five archetypes
+  (Builder / Operator / Rainmaker / Capitalist / Venture Architect, each boosting
+  different contribution categories and starting resources), then works the seven
+  spec phases — Opportunity Discovery → Qualification → Validation → MVP Build →
+  Revenue Validation → Scale → Spinout. Each phase exposes a set of actions that
+  spend **Cash** + **Runway (weeks)** and move **Reputation**, **Certainty**, pain
+  signals, customers, and **MRR**; a per-phase gate must be cleared to advance.
+  Certainty uses a soft-cap (gains scale by remaining headroom). Contribution
+  accumulates across the seven weighted categories from the spec and feeds a
+  weighted score; the endgame maps revenue + contribution breadth + reputation to
+  one of the six spec outcomes (Failed Venture, Zombie Startup, Lifestyle Business,
+  Growth Company, Acquisition Target, Venture Studio Champion). Running out of cash
+  or runway fails the run early. Self-contained vanilla JS (`index.html`,
+  `style.css`, `app.js`) matching the playground's dark theme, with a resource HUD,
+  phase stepper, action cards, live contribution bars, an activity log, random
+  flavor events, and toast flashes. Wired a card into the root `index.html` and a
+  row into `README.md`. `node --check` clean.
+
 ## 2026-06-16
 
 - **Blog post — Venture Studio Simulator explainer.** Added

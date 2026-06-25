@@ -1,0 +1,125 @@
+/* MJVS Playtester — styles layered on top of the game's style.css */
+
+/* --- Controls ----------------------------------------------------------- */
+.controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+.control label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #9aa3b5;
+  margin-bottom: 6px;
+}
+.control select,
+.control input[type="number"] {
+  width: 100%;
+  background: #161922;
+  color: #e3e7ef;
+  border: 1px solid #2e3342;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 14px;
+}
+.control-desc { margin: 6px 0 0; font-size: 11.5px; color: #717a8c; line-height: 1.4; }
+.param-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.param-row span { font-size: 12.5px; color: #b3bac8; }
+.param-row input { width: 74px; }
+.control-run { display: flex; flex-direction: column; gap: 8px; }
+.control-run .btn { width: 100%; }
+
+/* --- Leaderboard -------------------------------------------------------- */
+#leaderboard { display: flex; flex-direction: column; gap: 8px; }
+.lb-row {
+  display: grid;
+  grid-template-columns: 24px 150px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #161922;
+  border: 1px solid #2e3342;
+  border-radius: 8px;
+}
+.lb-rank { font-weight: 700; color: #8fa6c0; text-align: center; }
+.lb-arch { font-weight: 600; color: #e3e7ef; }
+.lb-bar-track { height: 10px; border-radius: 5px; background: #20242e; overflow: hidden; }
+.lb-bar-fill { height: 100%; border-radius: 5px; }
+.lb-outcome { font-size: 13px; font-weight: 600; }
+
+/* --- Per-archetype result cards ----------------------------------------- */
+.arch-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 16px;
+}
+.arch-card-r {
+  background: #1b1e27;
+  border: 1px solid #2e3342;
+  border-radius: 12px;
+  padding: 16px;
+}
+.arch-card-r h3 {
+  margin: 0 0 2px;
+  font-size: 16px;
+  color: #6fc3ff;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.arch-card-r .status { font-size: 11.5px; color: #8fa6c0; font-weight: 400; }
+.curve-wrap { margin: 10px 0 6px; }
+.curve-wrap canvas { width: 100%; height: 90px; display: block; background: #12141b; border-radius: 8px; border: 1px solid #242a36; }
+.curve-legend { font-size: 10.5px; color: #717a8c; margin-top: 3px; display: flex; gap: 14px; }
+.curve-legend b { font-weight: 600; }
+
+.dist-bars { display: flex; height: 16px; border-radius: 5px; overflow: hidden; margin: 8px 0; border: 1px solid #242a36; }
+.dist-seg { height: 100%; }
+.dist-legend { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 11px; margin-bottom: 4px; }
+.dist-legend span { display: inline-flex; align-items: center; gap: 4px; color: #b3bac8; }
+.dist-dot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+.best-line { font-size: 12.5px; color: #c2c8d4; margin: 8px 0 4px; }
+.best-line b { color: #e3e7ef; }
+
+.playbook { margin-top: 10px; border-top: 1px solid #262a35; padding-top: 10px; }
+.playbook h4 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #9aa3b5; }
+.pb-phase { margin-bottom: 6px; }
+.pb-phase-name { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: #6f7a8c; margin-bottom: 2px; }
+.pb-step { font-size: 12.5px; color: #cdd3df; padding: 1px 0 1px 10px; }
+.pb-step.advance { color: #7ed6a0; font-weight: 600; }
+.pb-summary { margin-top: 10px; font-size: 12px; color: #b3bac8; }
+.pb-summary .tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 12px; }
+
+/* --- Inspector ---------------------------------------------------------- */
+.inspector-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.inspector-controls select { background: #161922; color: #e3e7ef; border: 1px solid #2e3342; border-radius: 8px; padding: 7px 10px; font-family: inherit; }
+.inspector-controls .btn { padding: 7px 14px; }
+#insp-step-label { font-size: 13px; color: #c2c8d4; min-width: 150px; text-align: center; }
+.insp-samples { font-size: 12px; color: #8fa6c0; margin-left: auto; }
+.insp-samples input { width: 64px; background: #161922; color: #e3e7ef; border: 1px solid #2e3342; border-radius: 6px; padding: 5px 8px; }
+
+.inspector-state { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.istat { background: #161922; border: 1px solid #2e3342; border-radius: 8px; padding: 6px 12px; font-size: 12px; }
+.istat .l { color: #717a8c; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; }
+.istat .v { color: #e3e7ef; font-weight: 600; font-size: 14px; }
+
+.inspector-moves { display: flex; flex-direction: column; gap: 6px; }
+.mv-row { display: grid; grid-template-columns: 200px 1fr 70px; align-items: center; gap: 10px; }
+.mv-name { font-size: 12.5px; color: #c2c8d4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mv-name.chosen { color: #7ed6a0; font-weight: 700; }
+.mv-track { height: 12px; background: #20242e; border-radius: 6px; overflow: hidden; }
+.mv-fill { height: 100%; border-radius: 6px; background: #2c7a4b; }
+.mv-fill.chosen { background: #3a9a60; }
+.mv-val { font-size: 11.5px; color: #8fa6c0; text-align: right; font-variant-numeric: tabular-nums; }
+.insp-note { font-size: 12.5px; color: #b9a96f; }
