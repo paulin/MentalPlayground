@@ -11,6 +11,8 @@ you can watch happen in the browser.
 | --- | --- |
 | [Bikefight RL Simulator](bikefight/) | Two vehicles fight in an arena while a blue learner trains against a scripted bot via a TensorFlow.js DQN. Includes a live "Inside the Brain" panel that visualizes the network's observations, activations, and Q-values. |
 | [Data Science Playground](datascience/) | An interactive sandbox for rebuilding intuition about ML algorithms. Manipulate the data and hyperparameters and watch the internals update live. All 20 screens from the spec are built — across foundations, supervised learning, clustering, deep learning (incl. a from-scratch MLP, an interactive convolution/CNN, a gated RNN/LSTM memory cell, and a self-attention/Transformer matrix), and sequential decisions (Time Series Forecasting, Q-Learning gridworld, multi-armed-bandit RL). |
+| [Venture Studio Simulator](venturestudio/) | An explanatory model of how a venture studio machine works — fund a cohort, flow capital to studio operations, run ideas through BSSS ownership stages, and spin winners out into LLCs with a simulated cap table. |
+| [MJ Venture Studio](mjvs/) | A single-player, turn-based venture studio game (Incumbent Failure Arbitrage Studio model). Play a Studio Principal across seven phases — Discovery → Qualification → Validation → MVP → Revenue → Scale → Spinout — spending Cash and Runway, growing Reputation and Certainty, and accumulating contribution across seven categories into one of six endgame outcomes. |
 
 _More to come — each new experiment lives in its own folder._
 

@@ -3,6 +3,28 @@
 Most recent entries first. Notes on what was done each day — decisions, ideas,
 and changes.
 
+## 2026-06-23
+
+- **New module — MJ Venture Studio (`mjvs/`).** Built a single-player, turn-based
+  venture studio game from `docs/mjvs.md` (Incumbent Failure Arbitrage Studio
+  model). The player is a Studio Principal who picks one of five archetypes
+  (Builder / Operator / Rainmaker / Capitalist / Venture Architect, each boosting
+  different contribution categories and starting resources), then works the seven
+  spec phases — Opportunity Discovery → Qualification → Validation → MVP Build →
+  Revenue Validation → Scale → Spinout. Each phase exposes a set of actions that
+  spend **Cash** + **Runway (weeks)** and move **Reputation**, **Certainty**, pain
+  signals, customers, and **MRR**; a per-phase gate must be cleared to advance.
+  Certainty uses a soft-cap (gains scale by remaining headroom). Contribution
+  accumulates across the seven weighted categories from the spec and feeds a
+  weighted score; the endgame maps revenue + contribution breadth + reputation to
+  one of the six spec outcomes (Failed Venture, Zombie Startup, Lifestyle Business,
+  Growth Company, Acquisition Target, Venture Studio Champion). Running out of cash
+  or runway fails the run early. Self-contained vanilla JS (`index.html`,
+  `style.css`, `app.js`) matching the playground's dark theme, with a resource HUD,
+  phase stepper, action cards, live contribution bars, an activity log, random
+  flavor events, and toast flashes. Wired a card into the root `index.html` and a
+  row into `README.md`. `node --check` clean.
+
 ## 2026-06-16
 
 - **Blog post — Venture Studio Simulator explainer.** Added
