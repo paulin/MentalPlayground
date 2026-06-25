@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MJVS Playtester — AI strategy finder</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="playtest/playtest.css" />
+</head>
+<body>
+  <header>
+    <a class="breadcrumb" href="../index.html">← MentalPlayground</a>
+    <h1>MJVS Playtester</h1>
+    <span class="tagline">Let an agent learn the smartest way to play — and show its work.</span>
+    <a class="breadcrumb" style="margin-left:auto" href="index.html">Play the game →</a>
+  </header>
+
+  <div class="wrap">
+    <p class="disclaimer">
+      A <b>rapid playtesting</b> tool. It runs thousands of simulated games against the
+      <b>same engine</b> the real game uses, learning a policy that maximizes the chosen
+      objective, then surfaces an optimal <b>playbook</b> per archetype. Lightweight search
+      today; the strategy slot is pluggable for Q-learning / DQN / MCTS later.
+    </p>
+
+    <div class="panel controls">
+      <div class="control">
+        <label for="strategy">Strategy</label>
+        <select id="strategy"></select>
+        <p class="control-desc" id="strategy-desc"></p>
+      </div>
+      <div class="control">
+        <label for="reward">Objective (reward)</label>
+        <select id="reward"></select>
+        <p class="control-desc" id="reward-desc"></p>
+      </div>
+      <div class="control">
+        <label for="scope">Scope</label>
+        <select id="scope">
+          <option value="all">All 5 archetypes</option>
+          <option value="builder">Builder</option>
+          <option value="operator">Operator</option>
+          <option value="rainmaker">Rainmaker</option>
+          <option value="capitalist">Capitalist</option>
+          <option value="architect">Venture Architect</option>
+        </select>
+        <p class="control-desc">Learn one playbook per archetype, or just one.</p>
+      </div>
+      <div class="control control-params">
+        <label>Search budget</label>
+        <div class="param-row">
+          <span>Population</span><input type="number" id="population" value="28" min="6" max="200" />
+        </div>
+        <div class="param-row">
+          <span>Generations</span><input type="number" id="generations" value="35" min="1" max="500" />
+        </div>
+        <div class="param-row">
+          <span>Seeds / candidate</span><input type="number" id="seedCount" value="20" min="4" max="100" />
+        </div>
+      </div>
+      <div class="control control-run">
+        <button class="btn btn-go" id="run-btn">▶ Run playtest</button>
+        <button class="btn btn-ghost" id="stop-btn" disabled>Stop</button>
+        <p class="control-desc" id="run-status">Idle.</p>
+      </div>
+    </div>
+
+    <div class="panel" id="leaderboard-panel" hidden>
+      <h2 class="section-title">Leaderboard — strongest archetype</h2>
+      <p class="sub">Best outcome each archetype reached. A balance signal: if one dominates, the game may be tilted.</p>
+      <div id="leaderboard"></div>
+    </div>
+
+    <div id="arch-results" class="arch-results"></div>
+
+    <div class="panel" id="inspector-panel" hidden>
+      <h2 class="section-title">Move inspector — watch it reason</h2>
+      <p class="sub">Step through the best run. At each state, Monte Carlo rollouts estimate what every legal move is worth; the bar the policy actually took is highlighted.</p>
+      <div class="inspector-controls">
+        <select id="inspector-arch"></select>
+        <button class="btn btn-ghost" id="insp-prev">◀ Prev</button>
+        <span id="insp-step-label">—</span>
+        <button class="btn btn-ghost" id="insp-next">Next ▶</button>
+        <label class="insp-samples">rollouts/move <input type="number" id="insp-samples" value="24" min="4" max="200" /></label>
+      </div>
+      <div id="inspector-state" class="inspector-state"></div>
+      <div id="inspector-moves" class="inspector-moves"></div>
+    </div>
+  </div>
+
+  <script src="engine.js"></script>
+  <script src="playtest/strategies.js"></script>
+  <script src="playtest/playtest.js"></script>
+</body>
+</html>

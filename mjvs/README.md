@@ -36,12 +36,37 @@ before you run out of **Cash** or **Runway**.
   Growth Company, Acquisition Target, and Venture Studio Champion — graded on
   revenue, contribution breadth, and reputation.
 
+## Playtester — let an AI find the optimal play
+
+[`playtest.html`](playtest.html) is a companion tool that **playtests the game
+rapidly**. It runs thousands of simulated games against the very same engine the
+real game uses, learns a policy that maximizes a chosen objective, and surfaces
+an **optimal playbook for each archetype** plus a cross-archetype leaderboard.
+
+- **Lightweight search first** — an evolutionary policy hill-climber (primary),
+  with Monte Carlo rollouts powering a "watch it reason" move inspector. The
+  strategy slot is pluggable: Tabular Q-learning, DQN, and MCTS are registered
+  stubs, ready to implement behind the same contract.
+- **Swappable objective** — best outcome tier (default), maximize ARR, or a
+  weighted blend.
+- **Shows its work** — live training curve, outcome-tier distribution, the
+  discovered playbook, and per-move Monte Carlo values along the best run.
+
+Because both the game and the playtester share `engine.js`, any playbook the
+agent finds is replayable move-for-move in the real game.
+
 ## Files
 
 ```
-index.html   shell + intro/disclaimer
-style.css    dark theme matching the rest of the playground
-app.js       all game state, mechanics, scoring, and rendering (vanilla JS)
+index.html              shell + intro/disclaimer
+style.css               dark theme matching the rest of the playground
+engine.js               headless rules + simulation (shared source of truth)
+app.js                  the interactive game's UI layer over the engine
+playtest.html           the AI playtester page
+playtest/strategies.js  pluggable learning strategies + reward functions
+playtest/worker.js      runs training off the main thread
+playtest/playtest.js    playtester UI (curves, playbooks, leaderboard, inspector)
+playtest/playtest.css   playtester styles
 ```
 
 Everything is simulated and illustrative — a model of disciplined
