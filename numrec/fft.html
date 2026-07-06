@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FFT / Spectral Analysis — Numerical Recipes</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #14161c;
+    --panel: #1b1e27;
+    --panel2: #232a36;
+    --border: #2e3342;
+    --border2: #3a4152;
+    --text: #d8dce6;
+    --muted: #9aa3b5;
+    --dim: #717a8c;
+    --blue: #6fc3ff;
+    --green: #8fd18f;
+    --amber: #f0c674;
+    --pink: #e08fd1;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, sans-serif;
+    line-height: 1.5;
+  }
+  header {
+    padding: 22px 28px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .crumb { font-size: 13px; color: var(--dim); margin-bottom: 8px; }
+  .crumb a { color: var(--blue); text-decoration: none; }
+  .crumb a:hover { text-decoration: underline; }
+  h1 { margin: 0; font-size: 24px; color: #f0f2f7; }
+  .sub { margin: 6px 0 0; color: var(--muted); max-width: 760px; font-size: 14px; }
+
+  main {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    padding: 20px 28px 40px;
+    max-width: 1240px;
+  }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 16px 18px;
+  }
+  .panel h3 {
+    margin: 0 0 12px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .field label .val { color: var(--blue); font-variant-numeric: tabular-nums; }
+  input[type=range] {
+    width: 100%;
+    accent-color: var(--blue);
+    height: 20px;
+  }
+  .comp {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    background: #171a22;
+  }
+  .comp .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .comp .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 7px; }
+  .comp .name { font-size: 13px; color: var(--text); font-weight: 600; }
+  .switch { font-size: 12px; color: var(--dim); cursor: pointer; user-select: none; }
+  .comp.off { opacity: 0.4; }
+
+  .btn-row { display: flex; flex-wrap: wrap; gap: 7px; }
+  button.preset, .seg button {
+    background: var(--panel2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    border-radius: 7px;
+    padding: 7px 11px;
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: border-color .12s, background .12s;
+  }
+  button.preset:hover, .seg button:hover { border-color: var(--blue); }
+  .seg { display: inline-flex; border: 1px solid var(--border2); border-radius: 7px; overflow: hidden; }
+  .seg button { border: none; border-right: 1px solid var(--border2); border-radius: 0; padding: 6px 12px; }
+  .seg button:last-child { border-right: none; }
+  .seg button.active { background: var(--blue); color: #0c1016; font-weight: 600; }
+
+  .plot-wrap { margin-bottom: 20px; }
+  .plot-title { display: flex; align-items: baseline; justify-content: space-between; margin: 0 2px 7px; }
+  .plot-title .t { font-size: 14px; color: #eef1f6; font-weight: 600; }
+  .plot-title .hint { font-size: 12px; color: var(--dim); }
+  canvas {
+    display: block;
+    width: 100%;
+    background: #10131a;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .readout {
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: var(--muted);
+    min-height: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  .readout b { color: var(--green); }
+
+  .explain {
+    grid-column: 1 / -1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .explain h3 { margin: 0 0 10px; color: #eef1f6; font-size: 15px; }
+  .explain p { margin: 0 0 10px; max-width: 900px; }
+  .explain code {
+    background: #10131a; border: 1px solid var(--border);
+    border-radius: 4px; padding: 1px 5px; font-size: 12.5px; color: var(--amber);
+  }
+  .explain .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 700px) { .explain .grid2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">← Numerical Recipes</a> &nbsp;/&nbsp; Fourier &amp; Spectral Methods</div>
+  <h1>The Fast Fourier Transform</h1>
+  <p class="sub">
+    Every signal is secretly a sum of sine waves. The FFT is the algorithm that
+    takes a wiggling waveform (<span style="color:var(--blue)">top</span>) and
+    tells you exactly which frequencies it's made of
+    (<span style="color:var(--green)">bottom</span>) — in
+    <code style="color:var(--amber)">N&nbsp;log&nbsp;N</code> time instead of N².
+    Build a signal on the left and watch the transform pick it apart.
+  </p>
+</header>
+
+<main>
+  <!-- CONTROLS -->
+  <div class="panel">
+    <h3>Signal source</h3>
+    <div class="field">
+      <div class="seg" id="sourceSeg" style="display:flex; width:100%;">
+        <button data-src="custom" class="active" style="flex:1">Sine mixer</button>
+        <button data-src="square" style="flex:1">Square</button>
+        <button data-src="saw" style="flex:1">Saw</button>
+        <button data-src="triangle" style="flex:1">Triangle</button>
+      </div>
+    </div>
+
+    <!-- custom sine components -->
+    <div id="customBox">
+      <div class="comp" data-i="0">
+        <div class="head">
+          <span><span class="dot" style="background:var(--blue)"></span><span class="name">Component 1</span></span>
+          <span class="switch" data-toggle="0">on</span>
+        </div>
+        <div class="field" style="margin-bottom:8px">
+          <label>Frequency <span class="val" data-freqval="0">6 cyc</span></label>
+          <input type="range" min="1" max="80" value="6" data-freq="0">
+        </div>
+        <div class="field">
+          <label>Amplitude <span class="val" data-ampval="0">1.00</span></label>
+          <input type="range" min="0" max="100" value="100" data-amp="0">
+        </div>
+      </div>
+      <div class="comp" data-i="1">
+        <div class="head">
+          <span><span class="dot" style="background:var(--green)"></span><span class="name">Component 2</span></span>
+          <span class="switch" data-toggle="1">on</span>
+        </div>
+        <div class="field" style="margin-bottom:8px">
+          <label>Frequency <span class="val" data-freqval="1">17 cyc</span></label>
+          <input type="range" min="1" max="80" value="17" data-freq="1">
+        </div>
+        <div class="field">
+          <label>Amplitude <span class="val" data-ampval="1">0.60</span></label>
+          <input type="range" min="0" max="100" value="60" data-amp="1">
+        </div>
+      </div>
+      <div class="comp off" data-i="2">
+        <div class="head">
+          <span><span class="dot" style="background:var(--pink)"></span><span class="name">Component 3</span></span>
+          <span class="switch" data-toggle="2">off</span>
+        </div>
+        <div class="field" style="margin-bottom:8px">
+          <label>Frequency <span class="val" data-freqval="2">34 cyc</span></label>
+          <input type="range" min="1" max="80" value="34" data-freq="2">
+        </div>
+        <div class="field">
+          <label>Amplitude <span class="val" data-ampval="2">0.40</span></label>
+          <input type="range" min="0" max="100" value="40" data-amp="2">
+        </div>
+      </div>
+    </div>
+
+    <!-- waveform controls -->
+    <div id="waveBox" style="display:none">
+      <div class="field">
+        <label>Fundamental <span class="val" id="fundVal">6 cyc</span></label>
+        <input type="range" min="1" max="24" value="6" id="fund">
+      </div>
+      <div class="field">
+        <label>Harmonics in the sum <span class="val" id="harmVal">8</span></label>
+        <input type="range" min="1" max="60" value="8" id="harm">
+      </div>
+      <p style="font-size:12.5px; color:var(--dim); margin:2px 0 0">
+        A perfect square/saw/triangle needs infinite harmonics. Slide up and
+        watch the waveform sharpen (and Gibbs ears appear), while the spectrum
+        grows its tell-tale harmonic ladder.
+      </p>
+    </div>
+  </div>
+
+  <!-- PLOTS -->
+  <div>
+    <div class="plot-wrap">
+      <div class="plot-title">
+        <span class="t" style="color:var(--blue)">① Time domain</span>
+        <span class="hint">what a sensor records — amplitude over time</span>
+      </div>
+      <canvas id="timeCanvas" height="240"></canvas>
+    </div>
+
+    <div class="plot-wrap">
+      <div class="plot-title">
+        <span class="t" style="color:var(--green)">② Frequency domain</span>
+        <span class="hint">what the FFT reveals — energy at each frequency</span>
+      </div>
+      <canvas id="freqCanvas" height="240"></canvas>
+      <div class="readout" id="readout"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Real-world knobs</h3>
+      <div class="field">
+        <label>Measurement noise <span class="val" id="noiseVal">0%</span></label>
+        <input type="range" min="0" max="100" value="0" id="noise">
+      </div>
+      <div class="field">
+        <label>Window function</label>
+        <div class="seg" id="winSeg" style="margin-top:4px">
+          <button data-win="none" class="active">None (boxcar)</button>
+          <button data-win="hann">Hann</button>
+        </div>
+        <p style="font-size:12px; color:var(--dim); margin:7px 0 0">
+          The FFT assumes your slice repeats forever. When it doesn't line up,
+          energy smears across bins (<em>spectral leakage</em>). A window tapers
+          the edges to tame it. Set a frequency to a non-integer-looking value and
+          toggle this to see the peaks tighten.
+        </p>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Samples (N) <span class="val" id="nVal">512</span></label>
+        <div class="seg" id="nSeg" style="margin-top:4px">
+          <button data-n="128">128</button>
+          <button data-n="256">256</button>
+          <button data-n="512" class="active">512</button>
+          <button data-n="1024">1024</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPLANATION -->
+  <div class="explain">
+    <div class="grid2">
+      <div>
+        <h3>What you're looking at</h3>
+        <p>
+          The top plot is a signal sampled at <code id="nInline">512</code> evenly
+          spaced instants. The bottom plot is its <em>magnitude spectrum</em>:
+          bin&nbsp;<code>k</code> tells you how much of a sine wave that completes
+          <code>k</code> full cycles across the window is present. A pure tone
+          shows up as a single spike; add noise and the noise floor rises evenly
+          everywhere while the spikes stay put — which is exactly why the FFT is
+          how you pull a signal out of noise.
+        </p>
+      </div>
+      <div>
+        <h3>Why "fast"</h3>
+        <p>
+          The Discrete Fourier Transform is <code>N²</code> multiply-adds done
+          naively. The <b>Cooley–Tukey FFT</b> notices the DFT of an
+          <code>N</code>-point signal can be built from two DFTs of its
+          even- and odd-indexed halves, recursively — collapsing the cost to
+          <code>N&nbsp;log&nbsp;N</code>. At N=1024 that's the difference between
+          ~1,000,000 and ~10,000 operations. This page runs a real radix-2
+          Cooley–Tukey transform in your browser on every slider move.
+        </p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+// ---------- Radix-2 iterative Cooley–Tukey FFT (in place) ----------
+function fft(re, im) {
+  const n = re.length;
+  // bit-reversal permutation
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      const tr = re[i]; re[i] = re[j]; re[j] = tr;
+      const ti = im[i]; im[i] = im[j]; im[j] = ti;
+    }
+  }
+  // butterflies
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = -2 * Math.PI / len;
+    const wr = Math.cos(ang), wi = Math.sin(ang);
+    const half = len >> 1;
+    for (let i = 0; i < n; i += len) {
+      let cwr = 1, cwi = 0;
+      for (let k = 0; k < half; k++) {
+        const a = i + k, b = a + half;
+        const tr = cwr * re[b] - cwi * im[b];
+        const ti = cwr * im[b] + cwi * re[b];
+        re[b] = re[a] - tr; im[b] = im[a] - ti;
+        re[a] += tr;        im[a] += ti;
+        const ncwr = cwr * wr - cwi * wi;
+        cwi = cwr * wi + cwi * wr;
+        cwr = ncwr;
+      }
+    }
+  }
+}
+
+// ---------- State ----------
+const state = {
+  source: "custom",
+  comps: [
+    { freq: 6,  amp: 1.0, on: true },
+    { freq: 17, amp: 0.6, on: true },
+    { freq: 34, amp: 0.4, on: false },
+  ],
+  fund: 6,
+  harm: 8,
+  noise: 0,
+  window: "none",
+  N: 512,
+};
+
+const COLORS = ["#6fc3ff", "#8fd18f", "#e08fd1"];
+
+// deterministic pseudo-noise so it doesn't reshuffle every frame
+let seed = 1234567;
+function rand() { // xorshift, returns [-1,1]
+  seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5;
+  return (seed >>> 0) / 4294967296 * 2 - 1;
+}
+
+// ---------- Signal synthesis ----------
+function buildSignal() {
+  const N = state.N;
+  const s = new Float64Array(N);
+  const TWO_PI = Math.PI * 2;
+
+  if (state.source === "custom") {
+    for (const c of state.comps) {
+      if (!c.on || c.amp === 0) continue;
+      for (let i = 0; i < N; i++) {
+        s[i] += c.amp * Math.sin(TWO_PI * c.freq * i / N);
+      }
+    }
+  } else {
+    const f0 = state.fund, H = state.harm;
+    for (let i = 0; i < N; i++) {
+      const t = TWO_PI * f0 * i / N;
+      let v = 0;
+      if (state.source === "square") {
+        for (let k = 1; k <= H; k++) { const h = 2 * k - 1; v += Math.sin(h * t) / h; }
+        v *= 4 / Math.PI;
+      } else if (state.source === "saw") {
+        for (let k = 1; k <= H; k++) { v += Math.sin(k * t) / k * (k % 2 ? 1 : -1); }
+        v *= 2 / Math.PI;
+      } else { // triangle
+        for (let k = 0; k < H; k++) {
+          const h = 2 * k + 1;
+          v += Math.sin(h * t) / (h * h) * (k % 2 ? -1 : 1);
+        }
+        v *= 8 / (Math.PI * Math.PI);
+      }
+      s[i] = v;
+    }
+  }
+
+  if (state.noise > 0) {
+    seed = 1234567; // reset each build for a stable-looking noise pattern
+    for (let i = 0; i < N; i++) s[i] += state.noise * rand();
+  }
+  return s;
+}
+
+function applyWindow(s) {
+  if (state.window !== "hann") return s.slice();
+  const N = s.length;
+  const w = new Float64Array(N);
+  for (let i = 0; i < N; i++) {
+    const win = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
+    w[i] = s[i] * win;
+  }
+  return w;
+}
+
+// ---------- Rendering ----------
+function setupCanvas(cv) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+
+function drawTime(signal) {
+  const cv = document.getElementById("timeCanvas");
+  const { ctx, w, h } = setupCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+  const N = signal.length;
+  const mid = h / 2;
+
+  // find scale
+  let max = 0.001;
+  for (let i = 0; i < N; i++) max = Math.max(max, Math.abs(signal[i]));
+  const scale = (h / 2 - 14) / max;
+
+  // zero line
+  ctx.strokeStyle = "#232a36"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(w, mid); ctx.stroke();
+
+  // waveform
+  ctx.strokeStyle = "#6fc3ff"; ctx.lineWidth = 1.8;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  for (let i = 0; i < N; i++) {
+    const x = i / (N - 1) * w;
+    const y = mid - signal[i] * scale;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // subtle glow
+  ctx.strokeStyle = "rgba(111,195,255,0.18)"; ctx.lineWidth = 4;
+  ctx.stroke();
+}
+
+function drawFreq(mags) {
+  const cv = document.getElementById("freqCanvas");
+  const { ctx, w, h } = setupCanvas(cv);
+  ctx.clearRect(0, 0, w, h);
+  const half = mags.length; // already N/2 bins
+  const padL = 6, padB = 22, padT = 10;
+  const plotH = h - padB - padT;
+  const plotW = w - padL * 2;
+
+  let max = 0.0001;
+  for (let i = 0; i < half; i++) max = Math.max(max, mags[i]);
+
+  // baseline
+  ctx.strokeStyle = "#232a36"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(padL, h - padB); ctx.lineTo(w - padL, h - padB); ctx.stroke();
+
+  // frequency axis ticks
+  ctx.fillStyle = "#5b6474"; ctx.font = "11px system-ui";
+  ctx.textAlign = "center";
+  const ticks = 8;
+  for (let t = 0; t <= ticks; t++) {
+    const bin = Math.round(t / ticks * (half - 1));
+    const x = padL + bin / (half - 1) * plotW;
+    ctx.strokeStyle = "#1c222d";
+    ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, h - padB); ctx.stroke();
+    ctx.fillText(bin, x, h - 7);
+  }
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#495062";
+  ctx.fillText("frequency = cycles across the window  (bin k) →", w - padL, padT + 4);
+
+  // bars
+  const barW = Math.max(1, plotW / half * 0.8);
+  for (let i = 0; i < half; i++) {
+    const x = padL + i / (half - 1) * plotW;
+    const bh = mags[i] / max * plotH;
+    // color by relative height: tall = green spike, short = dim
+    const rel = mags[i] / max;
+    ctx.fillStyle = rel > 0.06
+      ? `rgba(143,209,143,${0.55 + 0.45 * rel})`
+      : "rgba(120,160,150,0.35)";
+    ctx.fillRect(x - barW / 2, h - padB - bh, barW, bh);
+  }
+}
+
+// find dominant peaks for the readout
+function findPeaks(mags) {
+  let max = 0.0001;
+  for (const m of mags) max = Math.max(max, m);
+  const peaks = [];
+  for (let i = 1; i < mags.length - 1; i++) {
+    if (mags[i] > mags[i - 1] && mags[i] >= mags[i + 1] && mags[i] > max * 0.12) {
+      peaks.push({ bin: i, mag: mags[i] });
+    }
+  }
+  peaks.sort((a, b) => b.mag - a.mag);
+  return peaks.slice(0, 4).sort((a, b) => a.bin - b.bin);
+}
+
+// ---------- Main recompute ----------
+function render() {
+  const signal = buildSignal();
+  drawTime(signal);
+
+  const N = state.N;
+  const windowed = applyWindow(signal);
+  const re = Float64Array.from(windowed);
+  const im = new Float64Array(N);
+  fft(re, im);
+
+  const half = N >> 1;
+  const mags = new Float64Array(half);
+  for (let i = 0; i < half; i++) {
+    mags[i] = Math.sqrt(re[i] * re[i] + im[i] * im[i]) / (N / 2);
+  }
+  drawFreq(mags);
+
+  const peaks = findPeaks(mags);
+  const ro = document.getElementById("readout");
+  if (peaks.length) {
+    ro.innerHTML = "Dominant frequencies: " +
+      peaks.map(p => `<b>${p.bin} cyc</b>`).join(" &middot; ") +
+      `  &nbsp;— ${peaks.length} peak${peaks.length > 1 ? "s" : ""} above the floor`;
+  } else {
+    ro.innerHTML = "No clear peaks — pure noise looks flat in every bin.";
+  }
+}
+
+// ---------- Wiring ----------
+function setSource(src) {
+  state.source = src;
+  document.querySelectorAll("#sourceSeg button").forEach(b =>
+    b.classList.toggle("active", b.dataset.src === src));
+  document.getElementById("customBox").style.display = src === "custom" ? "" : "none";
+  document.getElementById("waveBox").style.display = src === "custom" ? "none" : "";
+  render();
+}
+
+document.querySelectorAll("#sourceSeg button").forEach(b =>
+  b.addEventListener("click", () => setSource(b.dataset.src)));
+
+// component sliders
+document.querySelectorAll("[data-freq]").forEach(el => {
+  el.addEventListener("input", () => {
+    const i = +el.dataset.freq;
+    state.comps[i].freq = +el.value;
+    document.querySelector(`[data-freqval="${i}"]`).textContent = el.value + " cyc";
+    render();
+  });
+});
+document.querySelectorAll("[data-amp]").forEach(el => {
+  el.addEventListener("input", () => {
+    const i = +el.dataset.amp;
+    state.comps[i].amp = +el.value / 100;
+    document.querySelector(`[data-ampval="${i}"]`).textContent = (+el.value / 100).toFixed(2);
+    render();
+  });
+});
+document.querySelectorAll("[data-toggle]").forEach(el => {
+  el.addEventListener("click", () => {
+    const i = +el.dataset.toggle;
+    state.comps[i].on = !state.comps[i].on;
+    el.textContent = state.comps[i].on ? "on" : "off";
+    el.closest(".comp").classList.toggle("off", !state.comps[i].on);
+    render();
+  });
+});
+
+// waveform controls
+document.getElementById("fund").addEventListener("input", e => {
+  state.fund = +e.target.value;
+  document.getElementById("fundVal").textContent = e.target.value + " cyc";
+  render();
+});
+document.getElementById("harm").addEventListener("input", e => {
+  state.harm = +e.target.value;
+  document.getElementById("harmVal").textContent = e.target.value;
+  render();
+});
+
+// noise
+document.getElementById("noise").addEventListener("input", e => {
+  state.noise = +e.target.value / 100 * 1.5;
+  document.getElementById("noiseVal").textContent = e.target.value + "%";
+  render();
+});
+
+// window
+document.querySelectorAll("#winSeg button").forEach(b =>
+  b.addEventListener("click", () => {
+    state.window = b.dataset.win;
+    document.querySelectorAll("#winSeg button").forEach(x =>
+      x.classList.toggle("active", x === b));
+    render();
+  }));
+
+// N selector
+document.querySelectorAll("#nSeg button").forEach(b =>
+  b.addEventListener("click", () => {
+    state.N = +b.dataset.n;
+    document.querySelectorAll("#nSeg button").forEach(x =>
+      x.classList.toggle("active", x === b));
+    document.getElementById("nVal").textContent = state.N;
+    document.getElementById("nInline").textContent = state.N;
+    render();
+  }));
+
+window.addEventListener("resize", render);
+render();
+</script>
+</body>
+</html>

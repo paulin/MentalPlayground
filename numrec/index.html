@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Numerical Recipes — MentalPlayground</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #14161c;
+      color: #d8dce6;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      line-height: 1.5;
+    }
+    header {
+      padding: 32px 28px 22px;
+      border-bottom: 1px solid #262a35;
+    }
+    .crumb { font-size: 13px; color: #717a8c; margin-bottom: 10px; }
+    .crumb a { color: #6fc3ff; text-decoration: none; }
+    .crumb a:hover { text-decoration: underline; }
+    h1 { margin: 0; font-size: 28px; color: #f0f2f7; letter-spacing: 0.01em; }
+    .tagline { margin: 8px 0 0; color: #9aa3b5; max-width: 720px; font-size: 15px; }
+    main {
+      padding: 26px 28px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+      max-width: 1100px;
+    }
+    .card {
+      display: flex;
+      flex-direction: column;
+      background: #1b1e27;
+      border: 1px solid #2e3342;
+      border-radius: 10px;
+      padding: 18px 20px;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    a.card:hover { border-color: #3c6a7a; transform: translateY(-2px); }
+    .ch { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #5b6474; margin-bottom: 6px; }
+    .card h2 { margin: 0 0 6px; font-size: 17px; color: #6fc3ff; }
+    .card p { margin: 0 0 14px; font-size: 13.5px; color: #c2c8d4; flex: 1; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .tag {
+      font-size: 11px; padding: 3px 8px; background: #232a36;
+      border: 1px solid #2e3a48; border-radius: 20px; color: #8fa6c0;
+    }
+    .open { font-size: 14px; font-weight: 600; color: #8fd18f; }
+    .card.soon { border-style: dashed; opacity: 0.68; }
+    .card.soon h2 { color: #808aa0; }
+    .card.soon .open { color: #5b6474; }
+    footer {
+      padding: 6px 28px 44px; max-width: 1100px;
+      color: #717a8c; font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="crumb"><a href="../index.html">← MentalPlayground</a></div>
+    <h1>Numerical Recipes</h1>
+    <p class="tagline">
+      One-page, interactive demos of the algorithms from <em>Numerical Recipes:
+      The Art of Scientific Computing</em>. Each takes an idea you'd normally only
+      read about and lets you watch it happen — built from the concepts (not the
+      book's code), with every algorithm running live in your browser.
+    </p>
+  </header>
+
+  <main>
+    <a class="card" href="fft.html">
+      <div class="ch">Ch. 12–13 · Fourier &amp; Spectral</div>
+      <h2>The Fast Fourier Transform</h2>
+      <p>
+        Build a signal from sine waves, square/saw/triangle harmonic stacks, and
+        noise — then watch a real radix-2 Cooley–Tukey FFT decompose it into its
+        frequency spectrum. See spectral leakage, windowing, the noise floor, and
+        Gibbs phenomenon, all in real time.
+      </p>
+      <div class="tags">
+        <span class="tag">FFT</span>
+        <span class="tag">Cooley–Tukey</span>
+        <span class="tag">Canvas</span>
+      </div>
+      <span class="open">Open →</span>
+    </a>
+
+    <div class="card soon">
+      <div class="ch">Ch. 9 · Root Finding</div>
+      <h2>Roots of a Function</h2>
+      <p>
+        Bisection, Newton–Raphson, and the secant method racing to a root — watch
+        the bracket shrink and the tangent line march down a curve you can reshape.
+      </p>
+      <div class="tags"><span class="tag">Bisection</span><span class="tag">Newton</span></div>
+      <span class="open">Coming soon</span>
+    </div>
+
+    <div class="card soon">
+      <div class="ch">Ch. 3 · Interpolation</div>
+      <h2>Interpolation &amp; Splines</h2>
+      <p>
+        Drag control points and watch polynomial and cubic-spline interpolants
+        reshape live — including where high-order polynomials go wild (Runge's
+        phenomenon).
+      </p>
+      <div class="tags"><span class="tag">Cubic spline</span><span class="tag">Interactive</span></div>
+      <span class="open">Coming soon</span>
+    </div>
+
+    <div class="card soon">
+      <div class="ch">Ch. 4 · Integration</div>
+      <h2>Numerical Integration</h2>
+      <p>
+        Fill the area under a curve and compare the trapezoidal rule, Simpson's
+        rule, and Romberg integration as you change the number of panels.
+      </p>
+      <div class="tags"><span class="tag">Simpson</span><span class="tag">Romberg</span></div>
+      <span class="open">Coming soon</span>
+    </div>
+
+    <div class="card soon">
+      <div class="ch">Ch. 16 · ODEs</div>
+      <h2>Integrating ODEs</h2>
+      <p>
+        Euler vs. Runge–Kutta on orbits, pendulums, and the Lorenz attractor —
+        watch step size and method choice make trajectories bloom or blow up.
+      </p>
+      <div class="tags"><span class="tag">Runge–Kutta</span><span class="tag">Lorenz</span></div>
+      <span class="open">Coming soon</span>
+    </div>
+
+    <div class="card soon">
+      <div class="ch">Ch. 7 · Random Numbers</div>
+      <h2>Monte Carlo &amp; RNG</h2>
+      <p>
+        Throw darts to estimate π, transform uniform noise into any distribution,
+        and see how sample count tightens the estimate.
+      </p>
+      <div class="tags"><span class="tag">Monte Carlo</span><span class="tag">Sampling</span></div>
+      <span class="open">Coming soon</span>
+    </div>
+
+    <div class="card soon">
+      <div class="ch">Ch. 10 · Minimization</div>
+      <h2>Function Minimization</h2>
+      <p>
+        A ball rolling downhill on a contour map — gradient descent and the
+        downhill-simplex (amoeba) method hunting for the lowest point of a
+        landscape you can sculpt.
+      </p>
+      <div class="tags"><span class="tag">Gradient descent</span><span class="tag">Simplex</span></div>
+      <span class="open">Coming soon</span>
+    </div>
+  </main>
+
+  <footer>
+    Starting with the FFT — more chapters get their own page as they're built.
+  </footer>
+</body>
+</html>

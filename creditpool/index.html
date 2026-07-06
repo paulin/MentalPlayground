@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MJ VS Credit Pool Simulator</title>
+  <style>
+    :root{
+      --bg:#f5f7fb; --card:#ffffff; --ink:#111827; --muted:#6b7280; --line:#e5e7eb;
+      --blue:#2563eb; --green:#059669; --amber:#d97706; --red:#dc2626;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+
+    header{background:linear-gradient(135deg,#050816,#111827);color:#fff;padding:14px 24px 20px}
+    .breadcrumb{display:inline-block;color:#93c5fd;text-decoration:none;font-size:13px;margin-bottom:10px}
+    .breadcrumb:hover{color:#bfdbfe;text-decoration:underline}
+    .head-grid{display:grid;grid-template-columns:1.5fr repeat(4,minmax(110px,160px)) auto;gap:14px;align-items:center}
+    h1{margin:0;font-size:34px;letter-spacing:-1px} h1 span{color:#f59e0b}
+    .subtitle{margin-top:2px;color:#cbd5e1;font-size:14px}
+    .stat{border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px;background:rgba(255,255,255,.04)}
+    .stat label{display:block;color:#cbd5e1;font-size:12px;margin-bottom:5px}
+    .stat strong{font-size:22px}
+
+    button{border:0;background:var(--blue);color:#fff;border-radius:10px;padding:10px 13px;cursor:pointer;font-weight:700;box-shadow:0 8px 18px rgba(37,99,235,.18);font-size:14px}
+    button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+    button.secondary{background:#f3f4f6;color:#111827;box-shadow:none;border:1px solid var(--line)}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,.22);box-shadow:none;color:#fff}
+
+    main{padding:20px;display:grid;grid-template-columns:minmax(0,1.65fr) minmax(330px,.9fr);gap:18px;max-width:1500px;margin:0 auto}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 20px rgba(15,23,42,.04);padding:18px}
+    .grid{display:grid;gap:14px}.two{grid-template-columns:1fr 1fr}.three{grid-template-columns:repeat(3,1fr)}
+    h2{margin:0 0 12px;font-size:18px} h3{margin:0 0 8px;font-size:15px}
+    p{margin:0 0 10px;color:var(--muted);line-height:1.4}
+
+    .phase-row{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:8px}
+    .phase{border:1px solid var(--line);border-radius:12px;padding:10px;min-height:82px;background:#fafafa;text-align:center}
+    .phase.active{border-color:#93c5fd;background:#eff6ff}
+    .phase.done{border-color:#bbf7d0;background:#f0fdf4}
+    .phase .num{width:26px;height:26px;border-radius:999px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;background:#e5e7eb;font-weight:800;color:#374151;font-size:13px}
+    .phase.active .num{background:var(--blue);color:#fff}
+    .phase.done .num{background:var(--green);color:#fff}
+    .phase strong{font-size:13px}
+    .phase small{color:var(--muted);display:block;margin-top:4px;font-size:11px}
+
+    .bar{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+    .fill{height:100%;width:0;background:var(--blue);transition:width .35s ease}
+    .fill.green{background:var(--green)}.fill.amber{background:var(--amber)}
+
+    .pool{display:grid;grid-template-columns:135px 1fr 74px;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+    .pool:last-child{border-bottom:0}
+    .pool label{font-size:13px;font-weight:700}
+    .pool .lock{font-weight:500;color:var(--amber);font-size:11px}
+    .pool span{font-size:13px;color:var(--muted);text-align:right}
+
+    .event{border-left:4px solid var(--blue);background:#f8fafc;border-radius:9px;padding:10px;margin-bottom:8px;font-size:13px}
+    .event.good{border-left-color:var(--green)}.event.bad{border-left-color:var(--red)}
+
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+    th{color:var(--muted);font-size:12px}
+    .right{text-align:right}
+    .big-number{font-size:28px;font-weight:900}
+    .green-text{color:var(--green)}.blue-text{color:var(--blue)}.amber-text{color:var(--amber)}
+    .small{font-size:12px;color:var(--muted)}
+    .footer-controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    .pill{display:inline-block;border-radius:999px;padding:3px 9px;font-size:12px;font-weight:700;background:#eef2ff;color:#3730a3;margin-right:5px;margin-top:6px}
+
+    .report{border:1px solid #bbf7d0;background:#f0fdf4;border-radius:12px;padding:14px;margin-top:4px}
+    .report h3{margin:0 0 4px}
+    .waterfall{display:grid;grid-template-columns:150px 1fr 60px;gap:8px;align-items:center;margin-top:4px;font-size:13px}
+    .seg{height:14px;border-radius:4px}
+
+    @media(max-width:1000px){
+      .head-grid{grid-template-columns:1fr 1fr}
+      main{grid-template-columns:1fr}
+      .phase-row{grid-template-columns:repeat(2,1fr)}
+      .two,.three{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <a class="breadcrumb" href="../index.html">← MentalPlayground</a>
+  <div class="head-grid">
+    <div>
+      <h1>MJ <span>VS</span> · Credit Pool Simulator</h1>
+      <div class="subtitle">How contribution credit gets earned, documented, and allocated over time.</div>
+    </div>
+    <div class="stat"><label>Phase</label><strong id="phaseStat">1 / 7</strong></div>
+    <div class="stat"><label>MRR</label><strong id="mrrStat">$0</strong></div>
+    <div class="stat"><label>Customers</label><strong id="custStat">0</strong></div>
+    <div class="stat"><label>Venture Value</label><strong id="valueStat">$0</strong></div>
+    <button class="ghost" onclick="resetSim()">↻ Reset</button>
+  </div>
+</header>
+
+<main>
+  <section class="grid">
+    <div class="card">
+      <h2>Simulation Purpose</h2>
+      <p>This one-page simulator shows how contribution credit gets allocated <strong>over time</strong> as a startup advances through venture-studio milestones. Each event produces a scorecard entry, draws from one or more economic pools, and reduces the value remaining in those pools. Ownership is not guessed at the start — it is earned, documented, and reviewed as the venture becomes real.</p>
+    </div>
+
+    <div class="card">
+      <h2>Phase Timeline</h2>
+      <div class="phase-row" id="phaseRow"></div>
+      <div class="footer-controls">
+        <button id="btnNext" onclick="nextEvent()">Run Next Event</button>
+        <button id="btnAuto" class="secondary" onclick="autoRun()">Auto Run 5 Events</button>
+        <button id="btnReview" class="secondary" onclick="advancePhase()">Force Milestone Review</button>
+      </div>
+    </div>
+
+    <div class="grid two">
+      <div class="card">
+        <h2>Current Startup</h2>
+        <h3>InboxOps AI</h3>
+        <p><strong>Incumbent failure:</strong> professional-service teams are trapped in overloaded shared inboxes because existing tools are too generic and too expensive.</p>
+        <p><strong>Wedge:</strong> AI triage, draft replies, and workflow routing for small expert teams.</p>
+        <div class="grid three">
+          <div><div class="small">MRR</div><div class="big-number blue-text" id="mrrBox">$0</div></div>
+          <div><div class="small">CAC</div><div class="big-number" id="cacBox">$0</div></div>
+          <div><div class="small">Certainty</div><div class="big-number green-text" id="certaintyBox">20%</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Milestone Gate</h2>
+        <p id="gateText"></p>
+        <div class="bar"><div class="fill green" id="gateFill"></div></div>
+        <div class="footer-controls">
+          <span class="pill" id="gateScore">0 / 100</span>
+          <span class="pill" id="riskPill">Risk: High</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Scorecard Generated By Events</h2>
+      <table>
+        <thead><tr><th>Event</th><th>Pool</th><th>Category</th><th class="right">Score</th><th class="right">Allocation</th><th class="right">Remaining</th></tr></thead>
+        <tbody id="ledgerBody"></tbody>
+      </table>
+      <div class="footer-controls"><button class="secondary" onclick="exportCsv()">Export ledger (CSV)</button></div>
+    </div>
+
+    <div class="card" id="reportCard" style="display:none">
+      <h2>Spinout Report</h2>
+      <div id="reportBody"></div>
+    </div>
+  </section>
+
+  <aside class="grid">
+    <div class="card">
+      <h2>Economic Pools</h2>
+      <div id="poolList"></div>
+    </div>
+    <div class="card">
+      <h2>Contribution Score</h2>
+      <p class="small">Accumulated evidence per category — not the same as ownership. Weights shown in parentheses.</p>
+      <div id="categoryList"></div>
+    </div>
+    <div class="card">
+      <h2>Ownership Allocated</h2>
+      <div class="grid two">
+        <div><div class="small">Total Allocated</div><div class="big-number green-text" id="allocatedStat">0%</div></div>
+        <div><div class="small">Unallocated (dynamic)</div><div class="big-number amber-text" id="unallocatedStat">60%</div></div>
+      </div>
+      <p class="small">Studio entity and future-operator pools are reserved. Dynamic pools allocate as evidence appears.</p>
+    </div>
+    <div class="card">
+      <h2>Recent Events</h2>
+      <div id="events"></div>
+    </div>
+  </aside>
+</main>
+
+<script>
+const phases=["Opportunity","Qualification","Validation","MVP Build","First Revenue","Scale","Spinout"];
+
+const POOL_DEFS={
+  studio:{name:"Studio Entity",total:40,locked:true},
+  principal:{name:"Principal Contribution",total:30},
+  contributor:{name:"Contributor / Advisor",total:10},
+  strategic:{name:"Strategic / Fundraising",total:10},
+  employee:{name:"Future Operator",total:10,locked:true}
+};
+const POOL_COLOR={studio:"#94a3b8",principal:"#2563eb",contributor:"#059669",strategic:"#d97706",employee:"#a855f7"};
+
+const CATEGORY_DEFS={
+  origination:{name:"Origination",weight:10},
+  product:{name:"Product & Engineering",weight:20},
+  gtm:{name:"GTM & Acquisition",weight:20},
+  operations:{name:"Operations",weight:15},
+  partnerships:{name:"Partnerships",weight:15},
+  fundraising:{name:"Fundraising",weight:5},
+  leadership:{name:"Leadership",weight:15}
+};
+
+const eventDeck=[
+  {phase:0,title:"Incumbent pain mapped",pool:"principal",cat:"origination",score:4,allocation:1.8,mrr:0,customers:0,certainty:12,gate:25,good:true},
+  {phase:0,title:"Customer interviews confirm urgency",pool:"principal",cat:"origination",score:5,allocation:2.2,mrr:0,customers:0,certainty:18,gate:35,good:true},
+  {phase:1,title:"Synthetic diligence memo flags weak CAC assumptions",pool:"principal",cat:"leadership",score:3,allocation:1.0,mrr:0,customers:0,certainty:10,gate:18,good:false},
+  {phase:1,title:"Revenue model revised with better pricing",pool:"principal",cat:"leadership",score:4,allocation:1.7,mrr:0,customers:0,certainty:12,gate:25,good:true},
+  {phase:2,title:"Three LOIs signed",pool:"contributor",cat:"gtm",score:4,allocation:1.5,mrr:0,customers:0,certainty:16,gate:35,good:true},
+  {phase:2,title:"Advisor validates buying committee",pool:"contributor",cat:"origination",score:3,allocation:.8,mrr:0,customers:0,certainty:12,gate:20,good:true},
+  {phase:3,title:"MVP shipped with AI routing workflow",pool:"principal",cat:"product",score:5,allocation:3.4,mrr:0,customers:0,certainty:8,gate:40,good:true},
+  {phase:3,title:"Technical debt discovered in integration layer",pool:"principal",cat:"product",score:2,allocation:.7,mrr:0,customers:0,certainty:-4,gate:-10,good:false},
+  {phase:4,title:"First 10 paying customers onboarded",pool:"principal",cat:"gtm",score:5,allocation:3.0,mrr:1000,customers:10,certainty:14,gate:35,good:true},
+  {phase:4,title:"Delivery workflow stabilized",pool:"principal",cat:"operations",score:4,allocation:2.0,mrr:500,customers:5,certainty:8,gate:20,good:true},
+  {phase:5,title:"Channel partner opens distribution path",pool:"strategic",cat:"partnerships",score:5,allocation:3.0,mrr:2500,customers:40,certainty:10,gate:30,good:true},
+  {phase:5,title:"Paid acquisition CAC lands below target",pool:"principal",cat:"gtm",score:5,allocation:3.3,mrr:4000,customers:80,certainty:14,gate:35,good:true},
+  {phase:5,title:"Strategic investor commits capital",pool:"strategic",cat:"fundraising",score:5,allocation:2.0,mrr:0,customers:0,certainty:5,gate:20,good:true},
+  {phase:6,title:"Spinout allocation review completed",pool:"principal",cat:"leadership",score:5,allocation:2.4,mrr:0,customers:0,certainty:5,gate:25,good:true},
+  {phase:6,title:"Future operator pool reserved for CEO hire",pool:"employee",cat:"operations",score:3,allocation:0,mrr:0,customers:0,certainty:0,gate:10,good:true}
+];
+
+let pools={}, categories={}, state;
+
+function resetSim(){
+  pools={}; for(const k in POOL_DEFS) pools[k]={...POOL_DEFS[k],left:POOL_DEFS[k].total};
+  categories={}; for(const k in CATEGORY_DEFS) categories[k]={...CATEGORY_DEFS[k],score:0};
+  state={phase:0,eventIndex:0,mrr:0,customers:0,cac:120,certainty:20,gate:0,value:0,
+    ledger:[],events:[{text:"Simulation started. Dynamic contribution pools are ready.",good:true}],spun:false};
+  document.getElementById("reportCard").style.display="none";
+  render();
+}
+
+const money=n=>n>=1e6?"$"+(n/1e6).toFixed(1)+"M":n>=1e3?"$"+Math.round(n/1e3)+"k":"$"+Math.round(n).toLocaleString();
+const pct=n=>Math.max(0,Math.min(100,Math.round(n)));
+
+function pendingEvent(){ return eventDeck.find((ev,i)=>i>=state.eventIndex && ev.phase<=state.phase); }
+
+function nextEvent(){
+  let e=pendingEvent();
+  // Current phase is out of events but later ones remain → auto-advance the gate
+  // so Run Next / Auto Run flow naturally through all seven phases.
+  while(!e && state.eventIndex<eventDeck.length && state.phase<phases.length-1){
+    advancePhase();
+    e=pendingEvent();
+  }
+  if(!e){
+    if(state.phase===phases.length-1 && !state.spun) advancePhase();  // finalize spinout report
+    else if(!state.spun){ addEvent("No unlocked events remain. Reset to run the simulation again.",false); render(); }
+    else render();   // already finished — stay quiet
+    return;
+  }
+  state.eventIndex=eventDeck.indexOf(e)+1;
+
+  const pool=pools[e.pool];
+  const allocation=Math.min(e.allocation,pool.left);          // never over-draw a pool
+  pool.left=Math.max(0,pool.left-allocation);
+  categories[e.cat].score=Math.min(100,categories[e.cat].score+e.score*8);
+
+  state.mrr+=e.mrr;
+  state.customers+=e.customers;
+  state.certainty=pct(state.certainty+e.certainty);
+  state.gate=pct(state.gate+e.gate);
+  state.value=Math.round(state.mrr*36*(1+state.certainty/100));
+  if(e.customers>0) state.cac=Math.max(12,Math.round(state.cac*.92));
+
+  state.ledger.unshift({title:e.title,pool:pool.name,cat:categories[e.cat].name,score:e.score,allocation,remaining:pool.left});
+  const blocked=e.allocation>0 && allocation<e.allocation;
+  addEvent(e.title+" → allocated "+allocation.toFixed(1)+"% from "+pool.name+(blocked?" (pool nearly exhausted)":"")+".",e.good);
+
+  if(state.gate>=100 && state.phase<phases.length-1) advancePhase();
+  render();
+}
+
+function advancePhase(){
+  if(state.phase<phases.length-1){
+    state.phase+=1; state.gate=0;
+    addEvent("Milestone review passed. Advanced to "+phases[state.phase]+".",true);
+  }else if(!state.spun){
+    state.spun=true;
+    addEvent("Spinout complete. Final ownership allocation is ready.",true);
+  }
+  render();
+}
+
+function autoRun(){ for(let i=0;i<5;i++){ if(state.eventIndex>=eventDeck.length && state.spun) break; nextEvent(); } }
+
+function addEvent(text,good){ state.events.unshift({text,good}); state.events=state.events.slice(0,8); }
+
+function dynamicTotals(){
+  const dyn=Object.values(pools).filter(p=>!p.locked);
+  const total=dyn.reduce((a,p)=>a+p.total,0);
+  const left=dyn.reduce((a,p)=>a+p.left,0);
+  return {total,left,allocated:total-left};
+}
+
+function exportCsv(){
+  const rows=[["Event","Pool","Category","Score","Allocation %","Remaining Pool %"]];
+  // ledger is newest-first; reverse for chronological export
+  [...state.ledger].reverse().forEach(r=>rows.push([r.title,r.pool,r.cat,r.score+"/5",r.allocation.toFixed(1),r.remaining.toFixed(1)]));
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download="credit-pool-ledger.csv"; a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function render(){
+  // header + startup metrics
+  setText("phaseStat",(state.phase+1)+" / 7");
+  setText("mrrStat",money(state.mrr));
+  setText("custStat",state.customers.toLocaleString());
+  setText("valueStat",money(state.value));
+  setText("mrrBox",money(state.mrr));
+  setText("cacBox",money(state.cac));
+  setText("certaintyBox",state.certainty+"%");
+
+  // phase timeline
+  document.getElementById("phaseRow").innerHTML=phases.map((p,i)=>{
+    const done=i<state.phase || (state.spun && i===state.phase);   // spinout shows complete once finalized
+    const active=i===state.phase && !state.spun;
+    return `<div class="phase ${active?"active":""} ${done?"done":""}">
+       <div class="num">${i+1}</div><strong>${p}</strong>
+       <small>${done?"Complete":active?"Active":"Locked"}</small>
+     </div>`;}).join("");
+
+  // milestone gate
+  setText("gateText","Current milestone progress for "+phases[state.phase]+". Events create evidence, and evidence unlocks the next stage.");
+  document.getElementById("gateFill").style.width=state.gate+"%";
+  setText("gateScore",state.gate+" / 100");
+  setText("riskPill","Risk: "+(state.certainty>70?"Low":state.certainty>45?"Medium":"High"));
+
+  // ownership summary
+  const dyn=dynamicTotals();
+  setText("allocatedStat",dyn.allocated.toFixed(1)+"%");
+  setText("unallocatedStat",dyn.left.toFixed(1)+"%");
+
+  // economic pools
+  document.getElementById("poolList").innerHTML=Object.values(pools).map(p=>{
+    const used=p.total-p.left, width=(used/p.total)*100;
+    return `<div class="pool">
+        <label>${p.name}${p.locked?' <span class="lock">· reserved</span>':''}</label>
+        <div class="bar"><div class="fill ${p.locked?"amber":"green"}" style="width:${width}%"></div></div>
+        <span>${p.left.toFixed(1)}% left</span>
+      </div>`;
+  }).join("");
+
+  // contribution categories
+  document.getElementById("categoryList").innerHTML=Object.values(categories).map(c=>
+    `<div class="pool">
+       <label>${c.name} <span class="small">(${c.weight}%)</span></label>
+       <div class="bar"><div class="fill" style="width:${c.score}%"></div></div>
+       <span>${c.score}/100</span>
+     </div>`).join("");
+
+  // ledger
+  document.getElementById("ledgerBody").innerHTML=state.ledger.slice(0,14).map(r=>
+    `<tr><td>${r.title}</td><td>${r.pool}</td><td>${r.cat}</td>
+       <td class="right">${r.score}/5</td><td class="right">${r.allocation.toFixed(1)}%</td>
+       <td class="right">${r.remaining.toFixed(1)}%</td></tr>`).join("")
+    || `<tr><td colspan="6" class="small">No scorecard events yet. Run the first event.</td></tr>`;
+
+  // event feed
+  document.getElementById("events").innerHTML=state.events.map(e=>
+    `<div class="event ${e.good?"good":"bad"}">${e.text}</div>`).join("");
+
+  // controls — disabled once the deck is exhausted and the spinout is finalized
+  const finished = state.eventIndex>=eventDeck.length && state.spun;
+  document.getElementById("btnNext").disabled = finished;
+  document.getElementById("btnAuto").disabled = finished;
+  document.getElementById("btnReview").disabled = finished;
+
+  renderReport();
+}
+
+function renderReport(){
+  const card=document.getElementById("reportCard");
+  if(!state.spun){ card.style.display="none"; return; }
+  card.style.display="block";
+
+  // ownership waterfall: reserved pools hold their full total; dynamic pools
+  // hold what was earned; the leftover dynamic % is shown as unallocated. Sums to 100%.
+  const dyn=dynamicTotals();
+  const segs=Object.entries(pools).map(([k,p])=>{
+    const held=p.locked?p.total:(p.total-p.left);   // reserved => full; dynamic => earned
+    return {label:p.name+(p.locked?" (reserved)":""),held,color:POOL_COLOR[k]};
+  });
+  segs.push({label:"Unallocated",held:dyn.left,color:"#e5e7eb"});
+
+  const topCats=Object.values(categories).filter(c=>c.score>0).sort((a,b)=>b.score-a.score).slice(0,3)
+    .map(c=>`${c.name} (${c.score}/100)`).join(", ")||"—";
+
+  // bars scaled so a 40% holding reads as a full bar
+  const bars=segs.map(s=>`
+    <div class="waterfall">
+      <div>${s.label}</div>
+      <div class="bar" style="height:14px"><div class="seg" style="width:${Math.max(2,(s.held/40)*100)}%;background:${s.color}"></div></div>
+      <div class="right">${s.held.toFixed(1)}%</div>
+    </div>`).join("");
+
+  document.getElementById("reportBody").innerHTML=`
+    <div class="report">
+      <h3>Ownership emerged from contribution — not a static founder split.</h3>
+      <p class="small">${dyn.allocated.toFixed(1)}% of the ${dyn.total}% dynamic pools was earned over ${state.ledger.length} documented events. ${dyn.left.toFixed(1)}% remains for future contributors.</p>
+    </div>
+    <div style="margin-top:12px">${bars}</div>
+    <table style="margin-top:14px">
+      <tr><td>Revenue at spinout</td><td class="right"><strong>${money(state.mrr)}</strong> MRR · ${state.customers.toLocaleString()} customers</td></tr>
+      <tr><td>Estimated venture value</td><td class="right"><strong>${money(state.value)}</strong></td></tr>
+      <tr><td>Studio understanding (certainty)</td><td class="right"><strong>${state.certainty}%</strong></td></tr>
+      <tr><td>Strongest contribution evidence</td><td class="right">${topCats}</td></tr>
+    </table>`;
+}
+
+function setText(id,v){ document.getElementById(id).textContent=v; }
+
+resetSim();
+</script>
+</body>
+</html>
