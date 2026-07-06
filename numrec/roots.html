@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Roots of a Function — Numerical Recipes</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #14161c; --panel: #1b1e27; --panel2: #232a36;
+    --border: #2e3342; --border2: #3a4152;
+    --text: #d8dce6; --muted: #9aa3b5; --dim: #717a8c;
+    --blue: #6fc3ff; --green: #8fd18f; --amber: #f0c674; --pink: #e08fd1; --red: #e8797a;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, sans-serif; line-height: 1.5; }
+  header { padding: 22px 28px 18px; border-bottom: 1px solid var(--border); }
+  .crumb { font-size: 13px; color: var(--dim); margin-bottom: 8px; }
+  .crumb a { color: var(--blue); text-decoration: none; }
+  .crumb a:hover { text-decoration: underline; }
+  h1 { margin: 0; font-size: 24px; color: #f0f2f7; }
+  .sub { margin: 6px 0 0; color: var(--muted); max-width: 780px; font-size: 14px; }
+  code { background: #10131a; border: 1px solid var(--border); border-radius: 4px;
+    padding: 1px 5px; font-size: 12.5px; color: var(--amber); }
+
+  main { display: grid; grid-template-columns: 330px 1fr; gap: 20px;
+    padding: 20px 28px 40px; max-width: 1260px; }
+  @media (max-width: 880px) { main { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+  .panel:last-child { margin-bottom: 0; }
+  .panel h3 { margin: 0 0 12px; font-size: 12px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--dim); }
+
+  .btn-row { display: flex; flex-wrap: wrap; gap: 7px; }
+  .presets button {
+    background: var(--panel2); border: 1px solid var(--border2); color: var(--text);
+    border-radius: 7px; padding: 7px 10px; font-size: 12.5px; cursor: pointer;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    transition: border-color .12s, background .12s; }
+  .presets button:hover { border-color: var(--blue); }
+  .presets button.active { background: #223142; border-color: var(--blue); color: #cfe8ff; }
+
+  .seg { display: flex; border: 1px solid var(--border2); border-radius: 7px; overflow: hidden; }
+  .seg button { flex: 1; border: none; border-right: 1px solid var(--border2);
+    background: var(--panel2); color: var(--text); padding: 8px 6px; font-size: 13px;
+    cursor: pointer; transition: background .12s; }
+  .seg button:last-child { border-right: none; }
+  .seg button.active { background: var(--blue); color: #0c1016; font-weight: 600; }
+
+  .play-row { display: flex; gap: 8px; margin-top: 4px; }
+  .play-row button { flex: 1; background: var(--panel2); border: 1px solid var(--border2);
+    color: var(--text); border-radius: 7px; padding: 9px 6px; font-size: 13px; cursor: pointer;
+    font-weight: 600; transition: border-color .12s, background .12s; }
+  .play-row button:hover { border-color: var(--blue); }
+  .play-row button.primary { background: var(--blue); color: #0c1016; border-color: var(--blue); }
+  .play-row button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .field label { display: flex; justify-content: space-between; font-size: 13px;
+    color: var(--muted); margin-bottom: 5px; }
+  .field label .val { color: var(--blue); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--blue); }
+
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat { background: #171a22; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+  .stat .k { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; }
+  .stat .v { font-size: 17px; color: #eef1f6; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .badge { display: inline-block; margin-top: 12px; padding: 6px 12px; border-radius: 7px;
+    font-size: 13px; font-weight: 600; width: 100%; text-align: center; }
+  .badge.ok { background: rgba(143,209,143,.15); color: var(--green); border: 1px solid rgba(143,209,143,.35); }
+  .badge.warn { background: rgba(232,121,122,.13); color: var(--red); border: 1px solid rgba(232,121,122,.35); }
+  .badge.run { background: rgba(240,198,116,.12); color: var(--amber); border: 1px solid rgba(240,198,116,.3); }
+
+  table.log { width: 100%; border-collapse: collapse; font-size: 12px;
+    font-variant-numeric: tabular-nums; margin-top: 2px; }
+  table.log th { text-align: right; color: var(--dim); font-weight: 500; padding: 4px 6px;
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); }
+  table.log th:first-child { text-align: left; }
+  table.log td { text-align: right; padding: 3px 6px; color: var(--muted); border-bottom: 1px solid #21252f; }
+  table.log td:first-child { text-align: left; color: var(--dim); }
+  table.log tr.cur td { background: #202634; color: #eef1f6; }
+  .logwrap { max-height: 240px; overflow-y: auto; }
+
+  .plot-title { display: flex; align-items: baseline; justify-content: space-between; margin: 0 2px 7px; }
+  .plot-title .t { font-size: 14px; color: #eef1f6; font-weight: 600; }
+  .plot-title .hint { font-size: 12px; color: var(--dim); }
+  canvas { display: block; width: 100%; background: #10131a; border: 1px solid var(--border);
+    border-radius: 10px; touch-action: none; cursor: grab; }
+
+  .explain { margin-top: 20px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 20px; font-size: 14px; color: var(--muted); }
+  .explain h3 { margin: 0 0 10px; color: #eef1f6; font-size: 15px; }
+  .explain p { margin: 0 0 10px; max-width: 940px; }
+  .method-note { display: none; }
+  .method-note.show { display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+</style>
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">← Numerical Recipes</a> &nbsp;/&nbsp; Ch. 9 · Root Finding</div>
+  <h1>Roots of a Function</h1>
+  <p class="sub">
+    Finding where a curve crosses zero is one of the oldest problems in computing.
+    Watch three classic methods hunt for a root: <b style="color:var(--pink)">bisection</b>
+    relentlessly halves a bracket, <b style="color:var(--amber)">Newton–Raphson</b> rides
+    tangent lines, and the <b style="color:var(--green)">secant</b> method draws chords.
+    Drag the handles on the x-axis to move the starting guesses, then step through the iterations.
+  </p>
+</header>
+
+<main>
+  <!-- CONTROLS -->
+  <div>
+    <div class="panel">
+      <h3>Function &nbsp;f(x)</h3>
+      <div class="presets btn-row" id="fnSeg"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Method</h3>
+      <div class="seg" id="methodSeg">
+        <button data-m="bisection" class="active">Bisection</button>
+        <button data-m="newton">Newton</button>
+        <button data-m="secant">Secant</button>
+      </div>
+      <div class="play-row">
+        <button id="resetBtn">⟲ Reset</button>
+        <button id="stepBtn">Step ▸</button>
+        <button id="playBtn" class="primary">▶ Play</button>
+      </div>
+      <div class="field" style="margin-top:14px">
+        <label>Animation speed <span class="val" id="spdVal">medium</span></label>
+        <input type="range" min="1" max="10" value="5" id="speed">
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Where it stands</h3>
+      <div class="stats">
+        <div class="stat"><div class="k">Iteration</div><div class="v" id="stIter">0</div></div>
+        <div class="stat"><div class="k">Estimate x</div><div class="v" id="stEst">—</div></div>
+        <div class="stat"><div class="k">f(x)</div><div class="v" id="stFx">—</div></div>
+        <div class="stat"><div class="k">Correct digits</div><div class="v" id="stDig">—</div></div>
+      </div>
+      <div class="badge run" id="badge">Drag the handles, then press Step or Play</div>
+    </div>
+
+    <div class="panel">
+      <h3>Iteration log</h3>
+      <div class="logwrap">
+        <table class="log">
+          <thead><tr><th>n</th><th>xₙ</th><th>f(xₙ)</th><th>|error|</th></tr></thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLOT -->
+  <div>
+    <div class="plot-title">
+      <span class="t" id="fnLabel">f(x) = x³ − 2x − 5</span>
+      <span class="hint">drag the ▲ handles on the axis to set the starting guess</span>
+    </div>
+    <canvas id="plot" height="520"></canvas>
+    <div class="legend">
+      <span><i style="background:var(--blue)"></i> f(x)</span>
+      <span><i style="background:var(--green)"></i> true root</span>
+      <span><i style="background:var(--amber)"></i> current step geometry</span>
+      <span><i style="background:var(--pink)"></i> estimate history</span>
+    </div>
+
+    <div class="explain">
+      <div class="method-note show" id="note-bisection">
+        <h3>Bisection — slow but unstoppable</h3>
+        <p>
+          Start with two points that <em>straddle</em> a root, so <code>f(a)</code> and
+          <code>f(b)</code> have opposite signs. Evaluate the midpoint and keep whichever
+          half still contains the sign change. The bracket halves every step, so the error
+          shrinks by exactly a factor of 2 each iteration — <b>linear convergence</b>. It's
+          guaranteed to converge but needs ~3.3 iterations per decimal digit. If the two
+          handles don't straddle a root, bisection can't even start.
+        </p>
+      </div>
+      <div class="method-note" id="note-newton">
+        <h3>Newton–Raphson — fast, when it behaves</h3>
+        <p>
+          From a single guess, follow the tangent line down to where it hits the axis; that's
+          your next guess. Near a simple root the number of correct digits roughly
+          <em>doubles</em> each step — <b>quadratic convergence</b>. The catch: it needs the
+          derivative, and a bad starting point can send it flying off or trap it in a cycle.
+          Try the <code>x³ − 2x + 2</code> function starting near 0 to watch Newton get stuck
+          bouncing between two points forever.
+        </p>
+      </div>
+      <div class="method-note" id="note-secant">
+        <h3>Secant — Newton without the derivative</h3>
+        <p>
+          Replace Newton's tangent with a chord (secant line) through the two most recent
+          points — no derivative required. Convergence is <b>superlinear</b>, order ≈ 1.618
+          (the golden ratio): slower than Newton per step, but each step is cheaper because
+          it skips the derivative evaluation. It shares Newton's fragility on bad guesses.
+        </p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+// ---------- Function library (f, derivative, reference roots) ----------
+const FUNCS = [
+  { id: "cubic", label: "x³ − 2x − 5", pretty: "f(x) = x³ − 2x − 5",
+    f: x => x*x*x - 2*x - 5, df: x => 3*x*x - 2,
+    domain: [-0.5, 3.2], roots: [2.0945514815423265],
+    starts: { bisection: [1, 3], newton: [3.0], secant: [3.0, 1.0] } },
+  { id: "cos", label: "cos x − x", pretty: "f(x) = cos(x) − x",
+    f: x => Math.cos(x) - x, df: x => -Math.sin(x) - 1,
+    domain: [-0.6, 3.0], roots: [0.7390851332151607],
+    starts: { bisection: [0, 2], newton: [2.4], secant: [2.4, 0.0] } },
+  { id: "tri", label: "x³−9x²+23x−15", pretty: "f(x) = x³ − 9x² + 23x − 15  (roots at 1, 3, 5)",
+    f: x => x*x*x - 9*x*x + 23*x - 15, df: x => 3*x*x - 18*x + 23,
+    domain: [0.3, 5.7], roots: [1, 3, 5],
+    starts: { bisection: [0.5, 2.2], newton: [4.4], secant: [0.5, 2.2] } },
+  { id: "cycle", label: "x³ − 2x + 2", pretty: "f(x) = x³ − 2x + 2  (Newton cycles from x≈0!)",
+    f: x => x*x*x - 2*x + 2, df: x => 3*x*x - 2,
+    domain: [-2.3, 1.6], roots: [-1.7692923542386314],
+    starts: { bisection: [-2.3, 0], newton: [0.1], secant: [-1.5, -2.0] } },
+];
+
+function loadStarts() {
+  const s = state.fn.starts[state.method];
+  state.g0 = s[0];
+  state.g1 = s.length > 1 ? s[1] : s[0];
+}
+
+const state = {
+  fn: FUNCS[0],
+  method: "bisection",
+  g0: FUNCS[0].starts.bisection[0],
+  g1: FUNCS[0].starts.bisection[1],
+  records: [],   // per-step geometry
+  status: "idle",
+  revealed: 0,   // steps shown
+  playing: false,
+  speed: 5,
+};
+
+const TOL = 1e-12, MAXIT = 40;
+
+// distance to nearest reference root
+function errorOf(x) {
+  let e = Infinity;
+  for (const r of state.fn.roots) e = Math.min(e, Math.abs(x - r));
+  return e;
+}
+
+// ---------- Generate the full iteration sequence ----------
+function generate() {
+  const { f, df } = state.fn;
+  const recs = [];
+  let status = "maxiter";
+  const seen = [];
+
+  if (state.method === "bisection") {
+    let a = Math.min(state.g0, state.g1), b = Math.max(state.g0, state.g1);
+    if (f(a) * f(b) > 0) { state.records = []; state.status = "nobracket"; return; }
+    for (let n = 0; n < MAXIT; n++) {
+      const m = 0.5 * (a + b), fm = f(m);
+      recs.push({ a, b, m, est: m, fx: fm });
+      if (Math.abs(fm) < TOL || (b - a) < TOL) { status = "converged"; break; }
+      if (f(a) * fm < 0) b = m; else a = m;
+    }
+  } else if (state.method === "newton") {
+    let x = state.g0;
+    for (let n = 0; n < MAXIT; n++) {
+      const fx = f(x), dfx = df(x);
+      if (!isFinite(fx) || Math.abs(dfx) < 1e-14) { recs.push({ x, fx, dfx, est: x }); status = "diverged"; break; }
+      const xn = x - fx / dfx;
+      recs.push({ x, fx, dfx, est: xn });
+      if (Math.abs(f(xn)) < TOL) { recs.push({ x: xn, fx: f(xn), dfx: df(xn), est: xn, terminal: true }); status = "converged"; break; }
+      if (!isFinite(xn) || Math.abs(xn) > 1e7) { status = "diverged"; break; }
+      if (seen.some(s => Math.abs(s - xn) < 1e-7)) { status = "cycle"; break; }
+      seen.push(x);
+      x = xn;
+    }
+  } else { // secant
+    let x0 = state.g0, x1 = state.g1;
+    for (let n = 0; n < MAXIT; n++) {
+      const f0 = f(x0), f1 = f(x1);
+      if (Math.abs(f1 - f0) < 1e-15) { recs.push({ x0, x1, f0, f1, est: x1 }); status = "diverged"; break; }
+      const xn = x1 - f1 * (x1 - x0) / (f1 - f0);
+      recs.push({ x0, x1, f0, f1, est: xn });
+      if (Math.abs(f(xn)) < TOL) { status = "converged"; break; }
+      if (!isFinite(xn) || Math.abs(xn) > 1e7) { status = "diverged"; break; }
+      x0 = x1; x1 = xn;
+    }
+  }
+  state.records = recs;
+  state.status = status;
+}
+
+// ---------- Coordinate transforms ----------
+let view = null;
+function computeView(w, h) {
+  const [xmin, xmax] = state.fn.domain;
+  // sample for y-range
+  let ymin = Infinity, ymax = -Infinity;
+  const S = 400;
+  for (let i = 0; i <= S; i++) {
+    const x = xmin + (xmax - xmin) * i / S;
+    const y = state.fn.f(x);
+    if (isFinite(y)) { ymin = Math.min(ymin, y); ymax = Math.max(ymax, y); }
+  }
+  const pad = (ymax - ymin) * 0.1 || 1;
+  ymin -= pad; ymax += pad;
+  const padL = 46, padR = 18, padT = 16, padB = 30;
+  view = {
+    xmin, xmax, ymin, ymax, padL, padR, padT, padB, w, h,
+    sx: x => padL + (x - xmin) / (xmax - xmin) * (w - padL - padR),
+    sy: y => padT + (ymax - y) / (ymax - ymin) * (h - padT - padB),
+    ix: px => xmin + (px - padL) / (w - padL - padR) * (xmax - xmin),
+  };
+}
+
+// ---------- Drawing ----------
+function setupCanvas(cv) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w * dpr; cv.height = h * dpr;
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+
+function draw() {
+  const cv = document.getElementById("plot");
+  const { ctx, w, h } = setupCanvas(cv);
+  computeView(w, h);
+  const V = view;
+  ctx.clearRect(0, 0, w, h);
+
+  // --- grid + axes ---
+  ctx.strokeStyle = "#1c222d"; ctx.lineWidth = 1;
+  ctx.fillStyle = "#4a5262"; ctx.font = "11px system-ui";
+  const xstep = niceStep(V.xmax - V.xmin);
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (let x = Math.ceil(V.xmin / xstep) * xstep; x <= V.xmax; x += xstep) {
+    const px = V.sx(x);
+    ctx.beginPath(); ctx.moveTo(px, V.padT); ctx.lineTo(px, h - V.padB); ctx.stroke();
+    ctx.fillText(fmtTick(x), px, h - V.padB + 5);
+  }
+  const ystep = niceStep(V.ymax - V.ymin);
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let y = Math.ceil(V.ymin / ystep) * ystep; y <= V.ymax; y += ystep) {
+    const py = V.sy(y);
+    ctx.beginPath(); ctx.moveTo(V.padL, py); ctx.lineTo(w - V.padR, py); ctx.stroke();
+    ctx.fillText(fmtTick(y), V.padL - 6, py);
+  }
+  // zero axis (y=0) bold
+  if (V.ymin < 0 && V.ymax > 0) {
+    ctx.strokeStyle = "#39414f"; ctx.lineWidth = 1.5;
+    const p0 = V.sy(0);
+    ctx.beginPath(); ctx.moveTo(V.padL, p0); ctx.lineTo(w - V.padR, p0); ctx.stroke();
+  }
+
+  // --- true roots ---
+  for (const r of state.fn.roots) {
+    if (r < V.xmin || r > V.xmax) continue;
+    const px = V.sx(r), py = V.sy(0);
+    ctx.fillStyle = "rgba(143,209,143,0.9)";
+    ctx.beginPath(); ctx.arc(px, py, 4.5, 0, 7); ctx.fill();
+    ctx.strokeStyle = "rgba(143,209,143,0.35)"; ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(px, V.padT); ctx.lineTo(px, h - V.padB); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // --- curve ---
+  ctx.strokeStyle = "#6fc3ff"; ctx.lineWidth = 2; ctx.lineJoin = "round";
+  ctx.beginPath();
+  const S = 600;
+  for (let i = 0; i <= S; i++) {
+    const x = V.xmin + (V.xmax - V.xmin) * i / S;
+    const px = V.sx(x), py = V.sy(state.fn.f(x));
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // --- estimate history (revealed so far) ---
+  for (let k = 0; k < state.revealed && k < state.records.length; k++) {
+    const e = state.records[k].est;
+    if (e < V.xmin || e > V.xmax) continue;
+    ctx.fillStyle = "rgba(224,143,209,0.5)";
+    ctx.beginPath(); ctx.arc(V.sx(e), V.sy(0), 3, 0, 7); ctx.fill();
+  }
+
+  // --- current step geometry ---
+  const rec = state.revealed > 0 ? state.records[state.revealed - 1] : null;
+  if (rec) drawStep(ctx, V, rec);
+
+  // --- draggable handles on axis ---
+  drawHandle(ctx, V, state.g0, "a");
+  if (state.method !== "newton") drawHandle(ctx, V, state.g1, "b");
+}
+
+function drawStep(ctx, V, rec) {
+  const amber = "#f0c674";
+  ctx.lineWidth = 1.8;
+  if (state.method === "bisection") {
+    // shade bracket
+    const xa = V.sx(rec.a), xb = V.sx(rec.b);
+    ctx.fillStyle = "rgba(224,143,209,0.10)";
+    ctx.fillRect(xa, V.padT, xb - xa, V.h - V.padT - V.padB);
+    ctx.strokeStyle = "rgba(224,143,209,0.5)"; ctx.setLineDash([4, 4]);
+    for (const xx of [rec.a, rec.b]) {
+      ctx.beginPath(); ctx.moveTo(V.sx(xx), V.padT); ctx.lineTo(V.sx(xx), V.h - V.padB); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    // midpoint
+    markPoint(ctx, V, rec.m, rec.fx, amber, "m");
+  } else if (state.method === "newton") {
+    // tangent line from (x, f(x)) to (est, 0)
+    ctx.strokeStyle = amber;
+    const p1 = [V.sx(rec.x), V.sy(rec.fx)];
+    const p2 = [V.sx(rec.est), V.sy(0)];
+    // extend the tangent a little past both ends
+    ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
+    ctx.strokeStyle = "rgba(240,198,116,0.4)"; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(V.sx(rec.x), V.sy(rec.fx)); ctx.lineTo(V.sx(rec.x), V.sy(0)); ctx.stroke();
+    ctx.setLineDash([]);
+    markPoint(ctx, V, rec.x, rec.fx, "#e08fd1", "");
+    // next estimate on axis
+    if (!rec.terminal) markPoint(ctx, V, rec.est, 0, amber, "next");
+    else markPoint(ctx, V, rec.est, 0, "#8fd18f", "");
+  } else { // secant
+    ctx.strokeStyle = amber;
+    ctx.beginPath();
+    ctx.moveTo(V.sx(rec.x0), V.sy(rec.f0));
+    // extend line through the two points to the axis intercept
+    ctx.lineTo(V.sx(rec.est), V.sy(0));
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(240,198,116,0.35)";
+    ctx.beginPath(); ctx.moveTo(V.sx(rec.x1), V.sy(rec.f1)); ctx.lineTo(V.sx(rec.x0), V.sy(rec.f0)); ctx.stroke();
+    markPoint(ctx, V, rec.x0, rec.f0, "#e08fd1", "");
+    markPoint(ctx, V, rec.x1, rec.f1, "#e08fd1", "");
+    markPoint(ctx, V, rec.est, 0, amber, "next");
+  }
+}
+
+function markPoint(ctx, V, x, y, color, label) {
+  const px = V.sx(x), py = V.sy(y);
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(px, py, 4.5, 0, 7); ctx.fill();
+  if (label) {
+    ctx.fillStyle = color; ctx.font = "600 11px system-ui";
+    ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+    ctx.fillText(label, px, py - 7);
+  }
+}
+
+function drawHandle(ctx, V, x, label) {
+  const px = V.sx(Math.max(V.xmin, Math.min(V.xmax, x)));
+  const py = V.h - V.padB;
+  ctx.fillStyle = "#cfe8ff";
+  ctx.beginPath();
+  ctx.moveTo(px, py - 9); ctx.lineTo(px - 6, py + 1); ctx.lineTo(px + 6, py + 1);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#8fb8d8"; ctx.font = "600 10px system-ui";
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ctx.fillText(label, px, py + 3);
+}
+
+function niceStep(range) {
+  const raw = range / 6;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / mag;
+  const step = n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10;
+  return step * mag;
+}
+function fmtTick(v) {
+  if (Math.abs(v) < 1e-9) return "0";
+  return (Math.round(v * 100) / 100).toString();
+}
+
+// ---------- Info panel ----------
+function fmtNum(x, d = 6) {
+  if (!isFinite(x)) return "∞";
+  if (Math.abs(x) !== 0 && (Math.abs(x) < 1e-4 || Math.abs(x) >= 1e5)) return x.toExponential(2);
+  return x.toFixed(d);
+}
+function updateInfo() {
+  const rec = state.revealed > 0 ? state.records[state.revealed - 1] : null;
+  document.getElementById("stIter").textContent = state.revealed;
+  if (rec) {
+    const est = rec.est, fx = state.fn.f(est), err = errorOf(est);
+    document.getElementById("stEst").textContent = fmtNum(est, 6);
+    document.getElementById("stFx").textContent = fmtNum(fx, 3);
+    const digits = err > 0 ? Math.max(0, -Math.log10(err)) : 15;
+    document.getElementById("stDig").textContent = err > 0 ? digits.toFixed(1) : "15+";
+  } else {
+    document.getElementById("stEst").textContent = "—";
+    document.getElementById("stFx").textContent = "—";
+    document.getElementById("stDig").textContent = "—";
+  }
+
+  const badge = document.getElementById("badge");
+  const done = state.revealed >= state.records.length;
+  badge.className = "badge run";
+  if (state.status === "nobracket") {
+    badge.className = "badge warn";
+    badge.textContent = "⚠ Bisection needs f(a) and f(b) to have opposite signs — drag the handles so they straddle a root.";
+  } else if (!done) {
+    badge.textContent = `Running… ${state.revealed} of up to ${state.records.length} steps`;
+  } else if (state.status === "converged") {
+    badge.className = "badge ok";
+    const est = state.records[state.records.length - 1].est;
+    badge.textContent = `✓ Converged to x ≈ ${fmtNum(est, 8)} in ${state.records.length} iterations`;
+  } else if (state.status === "cycle") {
+    badge.className = "badge warn";
+    badge.textContent = "⚠ Newton is cycling — the tangents bounce between the same points and never reach the root.";
+  } else if (state.status === "diverged") {
+    badge.className = "badge warn";
+    badge.textContent = "⚠ Diverged — the iteration ran away or hit a flat derivative. Try a different starting guess.";
+  } else {
+    badge.textContent = `Stopped after ${state.records.length} iterations (max reached)`;
+  }
+
+  // log table
+  const body = document.getElementById("logBody");
+  let rows = "";
+  for (let k = 0; k < state.revealed && k < state.records.length; k++) {
+    const e = state.records[k].est, fx = state.fn.f(e), err = errorOf(e);
+    const cls = k === state.revealed - 1 ? ' class="cur"' : "";
+    rows += `<tr${cls}><td>${k + 1}</td><td>${fmtNum(e, 6)}</td><td>${fmtNum(fx, 2)}</td><td>${fmtNum(err, 2)}</td></tr>`;
+  }
+  body.innerHTML = rows;
+  const wrap = body.closest(".logwrap");
+  wrap.scrollTop = wrap.scrollHeight;
+
+  document.getElementById("stepBtn").disabled = done && state.status !== "idle";
+}
+
+// ---------- Controls ----------
+function rebuild() {
+  generate();
+  state.revealed = 0;
+  stopPlay();
+  draw(); updateInfo();
+}
+function stepOnce() {
+  if (state.revealed < state.records.length) { state.revealed++; draw(); updateInfo(); }
+  if (state.revealed >= state.records.length) stopPlay();
+}
+let playTimer = null;
+function startPlay() {
+  if (!state.records.length) return;
+  if (state.revealed >= state.records.length) state.revealed = 0;
+  state.playing = true;
+  document.getElementById("playBtn").textContent = "❚❚ Pause";
+  document.getElementById("playBtn").classList.remove("primary");
+  const delay = 900 - state.speed * 78;
+  playTimer = setInterval(() => {
+    stepOnce();
+    if (state.revealed >= state.records.length) stopPlay();
+  }, delay);
+}
+function stopPlay() {
+  state.playing = false;
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  const b = document.getElementById("playBtn");
+  b.textContent = "▶ Play"; b.classList.add("primary");
+}
+
+// function selector
+const fnSeg = document.getElementById("fnSeg");
+FUNCS.forEach((fn, i) => {
+  const b = document.createElement("button");
+  b.textContent = fn.label; b.dataset.i = i;
+  if (i === 0) b.classList.add("active");
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#fnSeg button").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    state.fn = fn; loadStarts();
+    document.getElementById("fnLabel").textContent = fn.pretty.split("  ")[0];
+    rebuild();
+  });
+  fnSeg.appendChild(b);
+});
+
+document.querySelectorAll("#methodSeg button").forEach(b =>
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#methodSeg button").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    state.method = b.dataset.m;
+    loadStarts();
+    document.querySelectorAll(".method-note").forEach(n => n.classList.remove("show"));
+    document.getElementById("note-" + state.method).classList.add("show");
+    rebuild();
+  }));
+
+document.getElementById("resetBtn").addEventListener("click", () => { state.revealed = 0; stopPlay(); draw(); updateInfo(); });
+document.getElementById("stepBtn").addEventListener("click", () => { stopPlay(); stepOnce(); });
+document.getElementById("playBtn").addEventListener("click", () => { state.playing ? stopPlay() : startPlay(); });
+document.getElementById("speed").addEventListener("input", e => {
+  state.speed = +e.target.value;
+  document.getElementById("spdVal").textContent = ["", "slowest", "slow", "slow", "medium", "medium", "medium", "brisk", "fast", "fast", "fastest"][state.speed];
+  if (state.playing) { stopPlay(); startPlay(); }
+});
+
+// ---------- Dragging the handles ----------
+const canvas = document.getElementById("plot");
+let dragging = null;
+function handleAt(px) {
+  if (!view) return null;
+  const near = h => Math.abs(view.sx(view[h]) - px) < 16;
+  // check g0 and g1 proximity
+  const d0 = Math.abs(view.sx(state.g0) - px);
+  const d1 = state.method !== "newton" ? Math.abs(view.sx(state.g1) - px) : Infinity;
+  if (Math.min(d0, d1) > 18) return null;
+  return d0 <= d1 ? "g0" : "g1";
+}
+function pointerX(e) {
+  const r = canvas.getBoundingClientRect();
+  return (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+}
+function pointerY(e) {
+  const r = canvas.getBoundingClientRect();
+  return (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+}
+canvas.addEventListener("pointerdown", e => {
+  const px = pointerX(e), py = pointerY(e);
+  // only grab if near the axis handles (lower part of chart) OR near a handle x
+  const which = handleAt(px);
+  if (which) { dragging = which; canvas.style.cursor = "grabbing"; canvas.setPointerCapture(e.pointerId); }
+});
+canvas.addEventListener("pointermove", e => {
+  if (!dragging) {
+    canvas.style.cursor = handleAt(pointerX(e)) ? "grab" : "default";
+    return;
+  }
+  let x = view.ix(pointerX(e));
+  x = Math.max(view.xmin, Math.min(view.xmax, x));
+  x = Math.round(x * 1000) / 1000;
+  state[dragging] = x;
+  rebuild();
+});
+function endDrag() { if (dragging) { dragging = null; canvas.style.cursor = "grab"; } }
+canvas.addEventListener("pointerup", endDrag);
+canvas.addEventListener("pointercancel", endDrag);
+
+window.addEventListener("resize", () => { draw(); });
+
+// ---------- Boot ----------
+rebuild();
+</script>
+</body>
+</html>
