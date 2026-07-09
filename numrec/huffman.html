@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Huffman Coding — Numerical Recipes</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #14161c; --panel: #1b1e27; --panel2: #232a36;
+    --border: #2e3342; --border2: #3a4152;
+    --text: #d8dce6; --muted: #9aa3b5; --dim: #717a8c;
+    --blue: #6fc3ff; --green: #8fd18f; --amber: #f0c674; --pink: #e08fd1; --red: #e8797a;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, sans-serif; line-height: 1.5; }
+  header { padding: 22px 28px 18px; border-bottom: 1px solid var(--border); }
+  .crumb { font-size: 13px; color: var(--dim); margin-bottom: 8px; }
+  .crumb a { color: var(--blue); text-decoration: none; }
+  .crumb a:hover { text-decoration: underline; }
+  h1 { margin: 0; font-size: 24px; color: #f0f2f7; }
+  .sub { margin: 6px 0 0; color: var(--muted); max-width: 800px; font-size: 14px; }
+  code { background: #10131a; border: 1px solid var(--border); border-radius: 4px;
+    padding: 1px 5px; font-size: 12.5px; color: var(--amber); }
+
+  main { display: grid; grid-template-columns: 340px 1fr; gap: 20px;
+    padding: 20px 28px 40px; max-width: 1320px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+  .panel:last-child { margin-bottom: 0; }
+  .panel h3 { margin: 0 0 12px; font-size: 12px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--dim); }
+
+  .presets { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+  .presets button {
+    background: var(--panel2); border: 1px solid var(--border2); color: var(--text);
+    border-radius: 7px; padding: 6px 10px; font-size: 12.5px; cursor: pointer;
+    transition: border-color .12s, background .12s; }
+  .presets button:hover { border-color: var(--blue); }
+  .presets button.active { background: #223142; border-color: var(--blue); color: #cfe8ff; }
+
+  textarea { width: 100%; min-height: 74px; resize: vertical; background: #10131a;
+    color: var(--text); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 9px 11px; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 13px; line-height: 1.45; }
+  textarea:focus { outline: none; border-color: var(--blue); }
+
+  .play-row { display: flex; gap: 8px; margin-top: 4px; }
+  .play-row button { flex: 1; background: var(--panel2); border: 1px solid var(--border2);
+    color: var(--text); border-radius: 7px; padding: 9px 6px; font-size: 13px; cursor: pointer;
+    font-weight: 600; transition: border-color .12s, background .12s; }
+  .play-row button:hover { border-color: var(--blue); }
+  .play-row button.primary { background: var(--blue); color: #0c1016; border-color: var(--blue); }
+  .play-row button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .field label { display: flex; justify-content: space-between; font-size: 13px;
+    color: var(--muted); margin-bottom: 5px; }
+  .field label .val { color: var(--blue); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--blue); }
+
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat { background: #171a22; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+  .stat .k { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; }
+  .stat .v { font-size: 17px; color: #eef1f6; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .stat .v small { font-size: 11px; color: var(--dim); font-weight: normal; }
+  .badge { display: inline-block; margin-top: 12px; padding: 7px 12px; border-radius: 7px;
+    font-size: 13px; font-weight: 600; width: 100%; text-align: center; }
+  .badge.ok { background: rgba(143,209,143,.15); color: var(--green); border: 1px solid rgba(143,209,143,.35); }
+  .badge.run { background: rgba(240,198,116,.12); color: var(--amber); border: 1px solid rgba(240,198,116,.3); }
+
+  .codetbl { width: 100%; border-collapse: collapse; font-size: 12.5px;
+    font-variant-numeric: tabular-nums; }
+  .codetbl th { text-align: right; color: var(--dim); font-weight: 500; padding: 4px 7px;
+    border-bottom: 1px solid var(--border); }
+  .codetbl th:first-child, .codetbl th:nth-child(2) { text-align: left; }
+  .codetbl td { text-align: right; padding: 4px 7px; border-bottom: 1px solid #21252f; }
+  .codetbl td:first-child { text-align: left; }
+  .codetbl td.sym { font-family: ui-monospace, Menlo, monospace; font-weight: 700; }
+  .codetbl td.code { text-align: left; font-family: ui-monospace, Menlo, monospace; color: var(--muted); letter-spacing: 1px; }
+
+  .plot-title { display: flex; align-items: baseline; justify-content: space-between; margin: 0 2px 7px; }
+  .plot-title .t { font-size: 14px; color: #eef1f6; font-weight: 600; }
+  .plot-title .hint { font-size: 12px; color: var(--dim); }
+  canvas { display: block; width: 100%; background: #10131a; border: 1px solid var(--border);
+    border-radius: 10px; }
+
+  .bits { margin-top: 16px; }
+  .bits h3 { margin: 0 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+  .bitstream { background: #10131a; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px;
+    line-height: 1.9; word-break: break-all; max-height: 150px; overflow-y: auto; }
+  .bitstream .chunk { padding: 1px 0; border-radius: 3px; }
+  .bitstream .chunk .glyph { color: #0c1016; padding: 0 3px; border-radius: 3px; font-weight: 700; margin-right: 1px; }
+
+  .explain { margin-top: 20px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 20px; font-size: 14px; color: var(--muted); }
+  .explain h3 { margin: 0 0 10px; color: #eef1f6; font-size: 15px; }
+  .explain p { margin: 0 0 10px; max-width: 960px; }
+  .explain p:last-child { margin-bottom: 0; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend b { color: var(--amber); }
+</style>
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">← Numerical Recipes</a> &nbsp;/&nbsp; Ch. 20 · Less-Numerical Algorithms</div>
+  <h1>Huffman Coding &amp; Data Compression</h1>
+  <p class="sub">
+    Frequent symbols deserve short codes; rare ones can afford long ones. Huffman's 1952
+    algorithm builds the <em>provably optimal</em> prefix code by a beautifully simple rule:
+    repeatedly merge the two least-frequent items in the forest. Type some text, then watch the
+    code tree assemble itself from the leaves up — and see the message shrink below the
+    fixed-width 8-bits-per-character baseline.
+  </p>
+</header>
+
+<main>
+  <!-- CONTROLS -->
+  <div>
+    <div class="panel">
+      <h3>Input text</h3>
+      <div class="presets" id="presets"></div>
+      <textarea id="input" spellcheck="false"></textarea>
+    </div>
+
+    <div class="panel">
+      <h3>Build the tree</h3>
+      <div class="play-row">
+        <button id="resetBtn">⟲ Reset</button>
+        <button id="stepBtn">Merge ▸</button>
+        <button id="playBtn" class="primary">▶ Play</button>
+      </div>
+      <div class="field" style="margin-top:14px">
+        <label>Animation speed <span class="val" id="spdVal">medium</span></label>
+        <input type="range" min="1" max="10" value="5" id="speed">
+      </div>
+      <div class="badge run" id="badge">Press Merge or Play to build the tree</div>
+    </div>
+
+    <div class="panel">
+      <h3>Compression</h3>
+      <div class="stats">
+        <div class="stat"><div class="k">Original</div><div class="v" id="stOrig">—</div></div>
+        <div class="stat"><div class="k">Huffman</div><div class="v" id="stHuff">—</div></div>
+        <div class="stat"><div class="k">Saved</div><div class="v" id="stSave">—</div></div>
+        <div class="stat"><div class="k">Avg bits / char</div><div class="v" id="stAvg">—</div></div>
+        <div class="stat"><div class="k">Entropy <small>(limit)</small></div><div class="v" id="stEnt">—</div></div>
+        <div class="stat"><div class="k">Efficiency</div><div class="v" id="stEff">—</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Code table</h3>
+      <table class="codetbl">
+        <thead><tr><th>char</th><th>code</th><th>freq</th><th>bits</th></tr></thead>
+        <tbody id="codeBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TREE + OUTPUT -->
+  <div>
+    <div class="plot-title">
+      <span class="t" id="treeTitle">Huffman tree</span>
+      <span class="hint">left branch = 0 &nbsp;·&nbsp; right branch = 1 &nbsp;·&nbsp; read root → leaf for each code</span>
+    </div>
+    <canvas id="tree" height="440"></canvas>
+    <div class="legend">
+      <span><b>◆</b> internal node — shows combined frequency</span>
+      <span>● leaf — a character &amp; its count</span>
+      <span style="color:var(--amber)">highlighted = the merge just made</span>
+    </div>
+
+    <div class="bits">
+      <h3>Encoded message <span id="bitsMeta" style="color:var(--dim);text-transform:none;letter-spacing:0"></span></h3>
+      <div class="bitstream" id="bitstream"></div>
+    </div>
+
+    <div class="explain">
+      <h3>Why merging the two smallest is optimal</h3>
+      <p>
+        Every character starts as its own tree, weighted by how often it appears. Huffman keeps a
+        priority queue of these trees and, at each step, pulls out the <b>two lowest-weight</b> trees
+        and joins them under a new parent whose weight is their sum. That parent goes back into the
+        queue. Repeat until a single tree remains — <em>n − 1</em> merges for <em>n</em> distinct
+        characters.
+      </p>
+      <p>
+        The magic is that the two rarest symbols end up <em>deepest</em> in the tree, so they get the
+        <em>longest</em> bit-strings, while common symbols sit near the root with short codes. Because
+        every character is a <b>leaf</b>, no code is a prefix of another — the decoder never needs a
+        separator. Huffman proved this greedy choice yields the minimum possible average code length
+        among all prefix codes; it can only be beaten by giving up the one-integer-bit-per-symbol
+        constraint, which is exactly what <em>arithmetic coding</em> (§20.5) does.
+      </p>
+      <p>
+        The theoretical floor is Shannon's <b>entropy</b>, H = −Σ p·log₂ p bits per symbol. Huffman
+        always lands within one bit of it, and hits it exactly when every probability is a power of
+        ½ — try the <code>powers of two</code> preset to watch efficiency reach 100%.
+      </p>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+// ---------- Presets ----------
+const PRESETS = [
+  { name: "mississippi", text: "mississippi river" },
+  { name: "abracadabra", text: "abracadabra" },
+  { name: "english", text: "the quick brown fox jumps over the lazy dog" },
+  { name: "skewed", text: "AAAAAAAAAAAAAAAABBBBBBBBCCCCDDEF" },
+  { name: "powers of two", text: "AAAAAAAABBBBCCDE" },
+  { name: "DNA", text: "GATTACAGATTACAGGGCCCTTTAAAGATTACA" },
+];
+
+// palette for per-character coloring (traceable across tree/table/bitstream)
+const PAL = ["#6fc3ff","#8fd18f","#f0c674","#e08fd1","#e8797a","#9ad0c2",
+             "#c5a3ff","#ffb37a","#7ae0b0","#f28fb0","#8fb8ff","#d1d18f",
+             "#6fd1c3","#e0a06f","#b0e08f","#ff9fd1"];
+
+const state = {
+  text: PRESETS[0].text,
+  leaves: [],       // {char, freq, color}
+  nodes: [],        // all tree nodes
+  root: null,
+  merges: [],       // ordered internal nodes (creation order)
+  codes: {},        // char -> string
+  revealed: 0,      // merges shown
+  playing: false,
+  speed: 5,
+  built: false,
+};
+
+const ESCAPE = { " ": "␣", "\n": "⏎", "\t": "⇥" };
+function showChar(c) { return ESCAPE[c] !== undefined ? ESCAPE[c] : c; }
+
+// ---------- Build the Huffman tree ----------
+function build() {
+  const text = state.text;
+  const freq = new Map();
+  for (const ch of text) freq.set(ch, (freq.get(ch) || 0) + 1);
+
+  // stable ordering: by frequency then first appearance
+  const order = [];
+  const seen = new Set();
+  for (const ch of text) { if (!seen.has(ch)) { seen.add(ch); order.push(ch); } }
+
+  let nid = 0;
+  const leaves = order.map((ch, i) => ({
+    id: nid++, char: ch, freq: freq.get(ch), leaf: true,
+    left: null, right: null, color: PAL[i % PAL.length],
+  }));
+  // sort leaves ascending for display coloring stability already assigned by appearance
+  state.leaves = leaves.slice().sort((a, b) => b.freq - a.freq || a.char.localeCompare(b.char));
+
+  // priority queue: keep an array we scan for the two minima
+  let forest = leaves.slice();
+  const merges = [];
+  const allNodes = leaves.slice();
+
+  // tie-break by a monotonic sequence so results are deterministic
+  let seq = 0;
+  forest.forEach(n => n._seq = seq++);
+
+  function popMin() {
+    let bi = 0;
+    for (let i = 1; i < forest.length; i++) {
+      const a = forest[i], b = forest[bi];
+      if (a.freq < b.freq || (a.freq === b.freq && a._seq < b._seq)) bi = i;
+    }
+    return forest.splice(bi, 1)[0];
+  }
+
+  if (forest.length === 1) {
+    // single distinct character: give it the code "0"
+    state.root = forest[0];
+    state.merges = [];
+    state.nodes = allNodes;
+    state.codes = { [forest[0].char]: "0" };
+    return;
+  }
+
+  while (forest.length > 1) {
+    const a = popMin(), b = popMin();
+    const parent = {
+      id: nid++, char: null, freq: a.freq + b.freq, leaf: false,
+      left: a, right: b, color: "#9aa3b5", _seq: seq++,
+      order: merges.length,
+    };
+    a.parent = parent; b.parent = parent;
+    merges.push(parent);
+    allNodes.push(parent);
+    forest.push(parent);
+  }
+  state.root = forest[0];
+  state.merges = merges;
+  state.nodes = allNodes;
+
+  // assign codes: left = 0, right = 1
+  const codes = {};
+  (function walk(n, path) {
+    if (n.leaf) { codes[n.char] = path || "0"; return; }
+    walk(n.left, path + "0");
+    walk(n.right, path + "1");
+  })(state.root, "");
+  state.codes = codes;
+}
+
+// ---------- Layout (assign x by in-order leaf sweep, y by depth) ----------
+function layout() {
+  const root = state.root;
+  let leafX = 0, maxDepth = 0;
+  (function assign(n, depth) {
+    n.depth = depth;
+    maxDepth = Math.max(maxDepth, depth);
+    if (n.leaf) { n.ux = leafX++; }
+    else {
+      assign(n.left, depth + 1);
+      assign(n.right, depth + 1);
+      n.ux = (n.left.ux + n.right.ux) / 2;
+    }
+  })(root, 0);
+  const nLeaves = leafX;
+  state._layout = { nLeaves, maxDepth };
+}
+
+// which nodes are visible at current reveal count?
+// a merge of index k is visible when revealed > k; its two children become "attached".
+function nodeVisible(n) {
+  if (n.leaf) return true;          // leaves always drawn (dim until attached)
+  return n.order < state.revealed;
+}
+function leafAttached(n) {
+  // a leaf is "in play" once its parent merge has been revealed
+  return n.parent ? n.parent.order < state.revealed : true;
+}
+
+// ---------- Canvas ----------
+function setupCanvas(cv, hOverride) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth;
+  const h = hOverride || cv.clientHeight;
+  cv.width = w * dpr; cv.height = h * dpr;
+  cv.style.height = h + "px";
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+
+function drawTree() {
+  const cv = document.getElementById("tree");
+  const L = state._layout;
+  const rowH = 62;
+  const desiredH = Math.max(300, (L.maxDepth + 1) * rowH + 40);
+  const { ctx, w, h } = setupCanvas(cv, desiredH);
+  ctx.clearRect(0, 0, w, h);
+
+  const padX = 44, padTop = 26, padBot = 30;
+  const spanX = Math.max(1, L.nLeaves - 1);
+  const px = ux => padX + (spanX === 0 ? (w - 2 * padX) / 2 : (ux / spanX) * (w - 2 * padX));
+  const py = d => padTop + (L.maxDepth === 0 ? 0 : (d / L.maxDepth) * (h - padTop - padBot));
+
+  // edges first
+  ctx.lineWidth = 1.6;
+  for (const n of state.nodes) {
+    if (n.leaf || !nodeVisible(n)) continue;
+    const highlight = n.order === state.revealed - 1;
+    for (const [child, bit] of [[n.left, "0"], [n.right, "1"]]) {
+      ctx.strokeStyle = highlight ? "#f0c674" : "#39414f";
+      ctx.lineWidth = highlight ? 2.4 : 1.6;
+      ctx.beginPath();
+      ctx.moveTo(px(n.ux), py(n.depth));
+      ctx.lineTo(px(child.ux), py(child.depth));
+      ctx.stroke();
+      // bit label at midpoint
+      const mx = (px(n.ux) + px(child.ux)) / 2, my = (py(n.depth) + py(child.depth)) / 2;
+      ctx.fillStyle = "#10131a";
+      ctx.beginPath(); ctx.arc(mx, my, 8, 0, 7); ctx.fill();
+      ctx.fillStyle = highlight ? "#f0c674" : "#6f7889";
+      ctx.font = "700 11px ui-monospace, Menlo, monospace";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(bit, mx, my + 0.5);
+    }
+  }
+
+  // nodes
+  for (const n of state.nodes) {
+    const attached = n.leaf ? leafAttached(n) : nodeVisible(n);
+    if (n.leaf) {
+      const x = px(n.ux), y = py(n.depth);
+      const dim = !attached;
+      ctx.globalAlpha = dim ? 0.32 : 1;
+      // leaf: rounded chip
+      ctx.fillStyle = n.color;
+      const r = 15;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+      ctx.fillStyle = "#0c1016";
+      ctx.font = "700 14px ui-monospace, Menlo, monospace";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(showChar(n.char), x, y);
+      // freq below
+      ctx.globalAlpha = dim ? 0.32 : 0.9;
+      ctx.fillStyle = "#9aa3b5"; ctx.font = "11px system-ui";
+      ctx.textBaseline = "top";
+      ctx.fillText(String(n.freq), x, y + r + 3);
+      ctx.globalAlpha = 1;
+    } else if (nodeVisible(n)) {
+      const x = px(n.ux), y = py(n.depth);
+      const highlight = n.order === state.revealed - 1;
+      // diamond
+      const s = 13;
+      ctx.beginPath();
+      ctx.moveTo(x, y - s); ctx.lineTo(x + s, y); ctx.lineTo(x, y + s); ctx.lineTo(x - s, y);
+      ctx.closePath();
+      ctx.fillStyle = highlight ? "#3a3320" : "#232a36";
+      ctx.strokeStyle = highlight ? "#f0c674" : "#4a5262";
+      ctx.lineWidth = highlight ? 2 : 1.4;
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = highlight ? "#f0c674" : "#c2c8d4";
+      ctx.font = "700 12px system-ui";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(String(n.freq), x, y);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---------- Stats + tables ----------
+function totalChars() { return state.leaves.reduce((s, l) => s + l.freq, 0); }
+
+function updateStats() {
+  const n = totalChars();
+  const distinct = state.leaves.length;
+  const done = state.built && state.revealed >= state.merges.length;
+
+  // entropy (always computable from frequencies)
+  let H = 0;
+  for (const l of state.leaves) { const p = l.freq / n; H -= p * Math.log2(p); }
+
+  const origBits = n * 8;
+  document.getElementById("stOrig").innerHTML = `${origBits} <small>bits</small>`;
+  document.getElementById("stEnt").innerHTML = `${H.toFixed(2)} <small>b/sym</small>`;
+
+  if (done && n > 0) {
+    let huffBits = 0;
+    for (const l of state.leaves) huffBits += l.freq * state.codes[l.char].length;
+    const avg = huffBits / n;
+    const saved = origBits > 0 ? (1 - huffBits / origBits) * 100 : 0;
+    const eff = avg > 0 ? (H / avg) * 100 : 100;
+    document.getElementById("stHuff").innerHTML = `${huffBits} <small>bits</small>`;
+    document.getElementById("stSave").innerHTML = `${saved.toFixed(1)}<small>%</small>`;
+    document.getElementById("stAvg").innerHTML = `${avg.toFixed(2)} <small>b/sym</small>`;
+    document.getElementById("stEff").innerHTML = `${eff.toFixed(1)}<small>%</small>`;
+  } else {
+    for (const id of ["stHuff", "stSave", "stAvg", "stEff"])
+      document.getElementById(id).textContent = "—";
+  }
+}
+
+function updateCodeTable() {
+  const done = state.built && state.revealed >= state.merges.length;
+  const body = document.getElementById("codeBody");
+  let rows = "";
+  for (const l of state.leaves) {
+    const code = done ? state.codes[l.char] : "";
+    const bits = done ? l.freq * code.length : "";
+    rows += `<tr>
+      <td class="sym" style="color:${l.color}">${showChar(l.char)}</td>
+      <td class="code">${code || "<span style='color:#4a5262'>·</span>"}</td>
+      <td>${l.freq}</td>
+      <td>${bits}</td></tr>`;
+  }
+  body.innerHTML = rows;
+}
+
+function updateBitstream() {
+  const el = document.getElementById("bitstream");
+  const meta = document.getElementById("bitsMeta");
+  const done = state.built && state.revealed >= state.merges.length;
+  if (!done) {
+    el.innerHTML = "<span style='color:#4a5262'>finish building the tree to see the encoded bitstream…</span>";
+    meta.textContent = "";
+    return;
+  }
+  const colorOf = {};
+  for (const l of state.leaves) colorOf[l.char] = l.color;
+  const text = state.text;
+  const LIMIT = 240; // cap displayed characters
+  let html = "", shown = 0;
+  for (const ch of text) {
+    if (shown >= LIMIT) break;
+    const code = state.codes[ch];
+    html += `<span class="chunk"><span class="glyph" style="background:${colorOf[ch]}">${showChar(ch)}</span>${code}</span> `;
+    shown++;
+  }
+  if (shown < [...text].length) html += `<span style="color:#4a5262"> …(+${[...text].length - shown} more chars)</span>`;
+  el.innerHTML = html;
+  let huffBits = 0;
+  for (const l of state.leaves) huffBits += l.freq * state.codes[l.char].length;
+  meta.textContent = `— ${huffBits} bits total`;
+}
+
+function updateBadge() {
+  const badge = document.getElementById("badge");
+  if (!state.built || state.leaves.length === 0) {
+    badge.className = "badge run"; badge.textContent = "Type or pick some text to begin";
+    return;
+  }
+  if (state.leaves.length === 1) {
+    badge.className = "badge ok";
+    badge.textContent = "Only one distinct character — it gets the single-bit code 0.";
+    return;
+  }
+  const total = state.merges.length;
+  if (state.revealed >= total) {
+    badge.className = "badge ok";
+    badge.textContent = `✓ Tree complete — ${total} merges, ${state.leaves.length} leaves.`;
+  } else {
+    badge.className = "badge run";
+    badge.textContent = `Merge ${state.revealed} of ${total} — combining the two lightest trees.`;
+  }
+}
+
+function refreshAll() {
+  drawTree(); updateStats(); updateCodeTable(); updateBitstream(); updateBadge();
+  const total = state.merges.length;
+  document.getElementById("stepBtn").disabled = !state.built || state.revealed >= total;
+}
+
+// ---------- Control flow ----------
+function rebuild() {
+  stopPlay();
+  build();
+  layout();
+  state.built = true;
+  state.revealed = 0;
+  refreshAll();
+}
+function stepOnce() {
+  if (state.revealed < state.merges.length) { state.revealed++; refreshAll(); }
+  if (state.revealed >= state.merges.length) stopPlay();
+}
+let playTimer = null;
+function startPlay() {
+  if (!state.merges.length) return;
+  if (state.revealed >= state.merges.length) state.revealed = 0;
+  state.playing = true;
+  const b = document.getElementById("playBtn");
+  b.textContent = "❚❚ Pause"; b.classList.remove("primary");
+  const delay = 950 - state.speed * 82;
+  playTimer = setInterval(() => {
+    stepOnce();
+    if (state.revealed >= state.merges.length) stopPlay();
+  }, delay);
+}
+function stopPlay() {
+  state.playing = false;
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  const b = document.getElementById("playBtn");
+  if (b) { b.textContent = "▶ Play"; b.classList.add("primary"); }
+}
+
+// ---------- Wire up UI ----------
+const presetWrap = document.getElementById("presets");
+PRESETS.forEach((p, i) => {
+  const b = document.createElement("button");
+  b.textContent = p.name; b.dataset.i = i;
+  if (i === 0) b.classList.add("active");
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#presets button").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    state.text = p.text;
+    document.getElementById("input").value = p.text;
+    rebuild();
+  });
+  presetWrap.appendChild(b);
+});
+
+const input = document.getElementById("input");
+input.value = state.text;
+let debounce = null;
+input.addEventListener("input", () => {
+  document.querySelectorAll("#presets button").forEach(x => x.classList.remove("active"));
+  clearTimeout(debounce);
+  debounce = setTimeout(() => { state.text = input.value; rebuild(); }, 220);
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => { stopPlay(); state.revealed = 0; refreshAll(); });
+document.getElementById("stepBtn").addEventListener("click", () => { stopPlay(); stepOnce(); });
+document.getElementById("playBtn").addEventListener("click", () => { state.playing ? stopPlay() : startPlay(); });
+document.getElementById("speed").addEventListener("input", e => {
+  state.speed = +e.target.value;
+  document.getElementById("spdVal").textContent =
+    ["", "slowest", "slow", "slow", "medium", "medium", "medium", "brisk", "fast", "fast", "fastest"][state.speed];
+  if (state.playing) { stopPlay(); startPlay(); }
+});
+
+window.addEventListener("resize", () => { if (state.built) drawTree(); });
+
+// ---------- Boot ----------
+rebuild();
+</script>
+</body>
+</html>
