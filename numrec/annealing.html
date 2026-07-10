@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Simulated Annealing — Numerical Recipes</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #14161c; --panel: #1b1e27; --panel2: #232a36;
+    --border: #2e3342; --border2: #3a4152;
+    --text: #d8dce6; --muted: #9aa3b5; --dim: #717a8c;
+    --blue: #6fc3ff; --green: #8fd18f; --amber: #f0c674; --pink: #e08fd1; --red: #e8797a;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, sans-serif; line-height: 1.5; }
+  header { padding: 22px 28px 18px; border-bottom: 1px solid var(--border); }
+  .crumb { font-size: 13px; color: var(--dim); margin-bottom: 8px; }
+  .crumb a { color: var(--blue); text-decoration: none; }
+  .crumb a:hover { text-decoration: underline; }
+  h1 { margin: 0; font-size: 24px; color: #f0f2f7; }
+  .sub { margin: 6px 0 0; color: var(--muted); max-width: 810px; font-size: 14px; }
+  code { background: #10131a; border: 1px solid var(--border); border-radius: 4px;
+    padding: 1px 5px; font-size: 12.5px; color: var(--amber); }
+
+  main { display: grid; grid-template-columns: 330px 1fr; gap: 20px;
+    padding: 20px 28px 40px; max-width: 1260px; }
+  @media (max-width: 880px) { main { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+  .panel:last-child { margin-bottom: 0; }
+  .panel h3 { margin: 0 0 12px; font-size: 12px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--dim); }
+
+  .presets { display: flex; flex-wrap: wrap; gap: 7px; }
+  .presets button {
+    background: var(--panel2); border: 1px solid var(--border2); color: var(--text);
+    border-radius: 7px; padding: 7px 10px; font-size: 12.5px; cursor: pointer;
+    transition: border-color .12s, background .12s; }
+  .presets button:hover { border-color: var(--blue); }
+  .presets button.active { background: #223142; border-color: var(--blue); color: #cfe8ff; }
+  .wide { width: 100%; margin-top: 9px; background: var(--panel2); border: 1px solid var(--border2);
+    color: var(--text); border-radius: 7px; padding: 8px; font-size: 12.5px; cursor: pointer; }
+  .wide:hover { border-color: var(--blue); }
+
+  .play-row { display: flex; gap: 8px; margin-top: 4px; }
+  .play-row button { flex: 1; background: var(--panel2); border: 1px solid var(--border2);
+    color: var(--text); border-radius: 7px; padding: 9px 6px; font-size: 13px; cursor: pointer;
+    font-weight: 600; transition: border-color .12s, background .12s; }
+  .play-row button:hover { border-color: var(--blue); }
+  .play-row button.primary { background: var(--blue); color: #0c1016; border-color: var(--blue); }
+  .play-row button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .field { margin-top: 14px; }
+  .field label { display: flex; justify-content: space-between; font-size: 13px;
+    color: var(--muted); margin-bottom: 5px; }
+  .field label .val { color: var(--blue); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--blue); }
+
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat { background: #171a22; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+  .stat .k { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; }
+  .stat .v { font-size: 16px; color: #eef1f6; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .stat .v small { font-size: 11px; color: var(--dim); }
+  .badge { display: inline-block; margin-top: 12px; padding: 7px 12px; border-radius: 7px;
+    font-size: 13px; font-weight: 600; width: 100%; text-align: center; }
+  .badge.ok { background: rgba(143,209,143,.15); color: var(--green); border: 1px solid rgba(143,209,143,.35); }
+  .badge.run { background: rgba(240,198,116,.12); color: var(--amber); border: 1px solid rgba(240,198,116,.3); }
+
+  .plot-title { display: flex; align-items: baseline; justify-content: space-between; margin: 0 2px 7px; }
+  .plot-title .t { font-size: 14px; color: #eef1f6; font-weight: 600; }
+  .plot-title .hint { font-size: 12px; color: var(--dim); }
+  canvas { display: block; width: 100%; background: #10131a; border: 1px solid var(--border);
+    border-radius: 10px; }
+  #tour { cursor: crosshair; }
+
+  .curveWrap { margin-top: 16px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+
+  .explain { margin-top: 20px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 20px; font-size: 14px; color: var(--muted); }
+  .explain h3 { margin: 0 0 10px; color: #eef1f6; font-size: 15px; }
+  .explain p { margin: 0 0 10px; max-width: 950px; }
+  .explain p:last-child { margin-bottom: 0; }
+</style>
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">← Numerical Recipes</a> &nbsp;/&nbsp; Ch. 10 · Minimization</div>
+  <h1>Simulated Annealing</h1>
+  <p class="sub">
+    Metallurgists cool metal slowly so its atoms settle into a low-energy crystal; anneal too
+    fast and you freeze in defects. Simulated annealing borrows the trick to escape bad local
+    optima: early on, when the <em>temperature</em> is high, it will accept moves that make things
+    <em>worse</em> — then, as it cools, it grows pickier until it locks in. Here it untangles a
+    <b>traveling-salesman tour</b>: watch the crossings vanish as the temperature falls.
+  </p>
+</header>
+
+<main>
+  <!-- CONTROLS -->
+  <div>
+    <div class="panel">
+      <h3>Cities</h3>
+      <div class="presets" id="layoutSeg"></div>
+      <button class="wide" id="newBtn">↻ New random layout</button>
+      <div class="field">
+        <label>Number of cities <span class="val" id="nVal">45</span></label>
+        <input type="range" min="8" max="120" value="45" id="nCities">
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Cooling schedule</h3>
+      <div class="field" style="margin-top:2px">
+        <label>Start temperature <span class="val" id="tVal">1.0×</span></label>
+        <input type="range" min="-6" max="8" value="0" id="temp0">
+      </div>
+      <div class="field">
+        <label>Cooling rate α <span class="val" id="aVal">0.960</span></label>
+        <input type="range" min="900" max="990" value="960" id="alpha">
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Anneal</h3>
+      <div class="play-row">
+        <button id="resetBtn">⟲ Reset</button>
+        <button id="stepBtn">Step ▸</button>
+        <button id="playBtn" class="primary">▶ Play</button>
+      </div>
+      <div class="field">
+        <label>Animation speed <span class="val" id="spdVal">brisk</span></label>
+        <input type="range" min="1" max="10" value="7" id="speed">
+      </div>
+      <div class="badge run" id="badge">Press Play to start cooling</div>
+    </div>
+
+    <div class="panel">
+      <h3>Where it stands</h3>
+      <div class="stats">
+        <div class="stat"><div class="k">Temp step</div><div class="v" id="stStep">0</div></div>
+        <div class="stat"><div class="k">Temperature</div><div class="v" id="stTemp">—</div></div>
+        <div class="stat"><div class="k">Tour length</div><div class="v" id="stCur">—</div></div>
+        <div class="stat"><div class="k">Best found</div><div class="v" id="stBest">—</div></div>
+        <div class="stat"><div class="k">Accepted</div><div class="v" id="stAcc">—</div></div>
+        <div class="stat"><div class="k">Shorter by</div><div class="v" id="stSave">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOUR + CURVE -->
+  <div>
+    <div class="plot-title">
+      <span class="t">The tour</span>
+      <span class="hint">click on the map to add a city</span>
+    </div>
+    <canvas id="tour" height="430"></canvas>
+    <div class="legend">
+      <span><i style="background:var(--blue)"></i> current tour</span>
+      <span><i style="background:var(--green)"></i> best tour so far</span>
+      <span>● city</span>
+    </div>
+
+    <div class="curveWrap">
+      <div class="plot-title">
+        <span class="t">Energy &amp; temperature</span>
+        <span class="hint">tour length falling as the temperature cools</span>
+      </div>
+      <canvas id="curve" height="170"></canvas>
+      <div class="legend">
+        <span><i style="background:var(--pink)"></i> current length</span>
+        <span><i style="background:var(--green)"></i> best length</span>
+        <span><i style="background:var(--amber)"></i> temperature</span>
+      </div>
+    </div>
+
+    <div class="explain">
+      <h3>The Metropolis rule: sometimes accept a worse move</h3>
+      <p>
+        The "energy" here is the total tour length. Each step proposes a <b>2-opt move</b> — cut two
+        edges and reconnect them the other way, which reverses a stretch of the route and removes a
+        crossing. If the move <em>shortens</em> the tour (ΔE &lt; 0) it's always accepted. If it
+        <em>lengthens</em> it, it's still accepted with probability
+        <code>exp(−ΔE / T)</code>. When <code>T</code> is high that probability is near 1, so the
+        search roams freely and climbs out of local minima; as <code>T → 0</code> it vanishes and
+        the method becomes pure greedy descent.
+      </p>
+      <p>
+        The <b>cooling rate α</b> is everything. Each temperature step multiplies <code>T</code> by
+        α (here geometric cooling). Cool slowly — α near 1 — and the tour has time to reorganize
+        into something close to optimal; cool too fast and it freezes with crossings still in it,
+        the algorithmic version of a brittle, badly-annealed casting. Nudge α up and down and watch
+        the final tour quality change. Numerical Recipes presents exactly this traveling-salesman
+        example in its <em>Simulated Annealing Methods</em> section.
+      </p>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+// ---------- Seeded RNG (mulberry32) so runs are reproducible ----------
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+const LAYOUTS = [
+  { id: "random", label: "Random" },
+  { id: "circle", label: "Circle" },
+  { id: "clusters", label: "Clusters" },
+  { id: "grid", label: "Grid" },
+];
+
+const state = {
+  layout: "random",
+  n: 45,
+  seed: 12345,
+  tempMul: 1,
+  alpha: 0.96,
+  cities: [],
+  frames: [],
+  initLen: 0,
+  status: "idle",
+  revealed: 1,
+  playing: false,
+  speed: 7,
+  extra: [],   // user-clicked cities (world coords), preserved across reseeds
+};
+
+// ---------- City generation ----------
+function makeCities() {
+  const rng = mulberry32(state.seed);
+  const n = state.n;
+  const pts = [];
+  if (state.layout === "circle") {
+    for (let i = 0; i < n; i++) {
+      const a = 2 * Math.PI * i / n;
+      const r = 0.38 + (rng() - 0.5) * 0.06;
+      pts.push([0.5 + r * Math.cos(a), 0.5 + r * Math.sin(a)]);
+    }
+  } else if (state.layout === "clusters") {
+    const k = Math.max(2, Math.round(n / 12));
+    const centers = [];
+    for (let c = 0; c < k; c++) centers.push([0.15 + rng() * 0.7, 0.15 + rng() * 0.7]);
+    for (let i = 0; i < n; i++) {
+      const c = centers[i % k];
+      pts.push([clamp01(c[0] + (rng() - 0.5) * 0.18), clamp01(c[1] + (rng() - 0.5) * 0.18)]);
+    }
+  } else if (state.layout === "grid") {
+    const cols = Math.ceil(Math.sqrt(n));
+    for (let i = 0; i < n; i++) {
+      const gx = i % cols, gy = Math.floor(i / cols);
+      const rows = Math.ceil(n / cols);
+      pts.push([0.1 + 0.8 * gx / (cols - 1 || 1) + (rng() - 0.5) * 0.03,
+                0.1 + 0.8 * gy / (rows - 1 || 1) + (rng() - 0.5) * 0.03]);
+    }
+  } else {
+    for (let i = 0; i < n; i++) pts.push([0.06 + rng() * 0.88, 0.06 + rng() * 0.88]);
+  }
+  for (const e of state.extra) pts.push(e.slice());
+  state.cities = pts;
+}
+function clamp01(v) { return v < 0.02 ? 0.02 : v > 0.98 ? 0.98 : v; }
+
+// ---------- Distances ----------
+let D = null;
+function buildDist() {
+  const c = state.cities, m = c.length;
+  D = new Float64Array(m * m);
+  for (let i = 0; i < m; i++)
+    for (let j = 0; j < m; j++)
+      D[i * m + j] = Math.hypot(c[i][0] - c[j][0], c[i][1] - c[j][1]);
+}
+function tourLen(t) {
+  const m = t.length; let s = 0;
+  for (let i = 0; i < m; i++) s += D[t[i] * m + t[(i + 1) % m]];
+  return s;
+}
+
+// ---------- Run the full annealing schedule up front ----------
+function generate() {
+  makeCities();
+  buildDist();
+  const m = state.cities.length;
+  const rng = mulberry32(state.seed ^ 0x9e3779b9);
+
+  // initial random tour
+  let tour = Array.from({ length: m }, (_, i) => i);
+  for (let i = m - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [tour[i], tour[j]] = [tour[j], tour[i]]; }
+  let curLen = tourLen(tour);
+
+  const frames = [{ tour: tour.slice(), best: tour.slice(), T: 0, cur: curLen, best_: curLen, acc: 0 }];
+  state.initLen = curLen;
+
+  let best = tour.slice(), bestLen = curLen;
+  const avgEdge = curLen / m;
+  let T = state.tempMul * avgEdge * 1.6;
+  const Tmin = T * 1e-3;
+  const alpha = state.alpha;
+  const movesPerStep = Math.max(80, m * 12);
+  const MAXF = 340;
+
+  if (m >= 4) {
+    for (let step = 0; step < MAXF && T > Tmin; step++) {
+      let accepts = 0;
+      for (let mv = 0; mv < movesPerStep; mv++) {
+        let i = Math.floor(rng() * m), j = Math.floor(rng() * m);
+        if (i > j) { const t = i; i = j; j = t; }
+        if (i === j || (i === 0 && j === m - 1)) continue;
+        const a = tour[(i - 1 + m) % m], b = tour[i], c2 = tour[j], d = tour[(j + 1) % m];
+        const delta = D[a * m + c2] + D[b * m + d] - D[a * m + b] - D[c2 * m + d];
+        if (delta < 0 || rng() < Math.exp(-delta / T)) {
+          // reverse segment i..j
+          let lo = i, hi = j;
+          while (lo < hi) { const t = tour[lo]; tour[lo] = tour[hi]; tour[hi] = t; lo++; hi--; }
+          curLen += delta;
+          accepts++;
+          if (curLen < bestLen - 1e-12) { bestLen = curLen; best = tour.slice(); }
+        }
+      }
+      frames.push({ tour: tour.slice(), best: best.slice(), T, cur: curLen, best_: bestLen, acc: accepts / movesPerStep });
+      T *= alpha;
+    }
+  }
+  state.frames = frames;
+  state.status = "done";
+}
+
+// ---------- Canvas helpers ----------
+function setup(cv) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  }
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+
+let tourView = null;
+function drawTour() {
+  const cv = document.getElementById("tour");
+  const { ctx, w, h } = setup(cv);
+  ctx.clearRect(0, 0, w, h);
+  const pad = 22;
+  const S = Math.min(w, h) - 2 * pad;
+  const ox = (w - S) / 2, oy = (h - S) / 2;
+  const px = x => ox + x * S, py = y => oy + y * S;
+  tourView = { ox, oy, S };
+
+  const c = state.cities;
+  const fr = state.frames.length ? state.frames[Math.min(state.revealed, state.frames.length) - 1] : null;
+
+  // best tour (faint underlay)
+  if (fr && fr.best && state.revealed > 1) {
+    ctx.strokeStyle = "rgba(143,209,143,0.35)"; ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    for (let i = 0; i <= fr.best.length; i++) {
+      const idx = fr.best[i % fr.best.length];
+      const X = px(c[idx][0]), Y = py(c[idx][1]);
+      if (i === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+    }
+    ctx.stroke();
+  }
+
+  // current tour
+  if (fr) {
+    ctx.strokeStyle = "rgba(111,195,255,0.9)"; ctx.lineWidth = 1.8; ctx.lineJoin = "round";
+    ctx.beginPath();
+    for (let i = 0; i <= fr.tour.length; i++) {
+      const idx = fr.tour[i % fr.tour.length];
+      const X = px(c[idx][0]), Y = py(c[idx][1]);
+      if (i === 0) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+    }
+    ctx.stroke();
+  }
+
+  // cities
+  for (let i = 0; i < c.length; i++) {
+    ctx.fillStyle = "#cfe8ff";
+    ctx.beginPath(); ctx.arc(px(c[i][0]), py(c[i][1]), 2.8, 0, 7); ctx.fill();
+  }
+}
+
+function drawCurve() {
+  const cv = document.getElementById("curve");
+  const { ctx, w, h } = setup(cv);
+  ctx.clearRect(0, 0, w, h);
+  const F = state.frames;
+  if (F.length < 2) return;
+  const padL = 40, padR = 40, padT = 12, padB = 20;
+  const n = F.length;
+  const sx = i => padL + i / (n - 1) * (w - padL - padR);
+
+  // length range
+  let lmin = Infinity, lmax = -Infinity, tmax = 0;
+  for (const f of F) { lmin = Math.min(lmin, f.best_); lmax = Math.max(lmax, f.cur); tmax = Math.max(tmax, f.T); }
+  const lpad = (lmax - lmin) * 0.08 || 1;
+  lmin -= lpad; lmax += lpad;
+  const syL = v => padT + (lmax - v) / (lmax - lmin) * (h - padT - padB);
+  const syT = v => padT + (tmax - v) / (tmax || 1) * (h - padT - padB);
+
+  // grid baseline
+  ctx.strokeStyle = "#1c222d"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(padL, h - padB); ctx.lineTo(w - padR, h - padB); ctx.stroke();
+
+  const rev = Math.min(state.revealed, n);
+
+  // temperature (amber) — full faint, revealed bright
+  drawSeries(ctx, F, n, sx, f => syT(f.T), "rgba(240,198,116,0.22)", 1.4, 0, n);
+  drawSeries(ctx, F, n, sx, f => syT(f.T), "#f0c674", 1.6, 0, rev);
+  // current length (pink)
+  drawSeries(ctx, F, n, sx, f => syL(f.cur), "rgba(224,143,209,0.9)", 1.6, 0, rev);
+  // best length (green)
+  drawSeries(ctx, F, n, sx, f => syL(f.best_), "#8fd18f", 1.8, 0, rev);
+
+  // current marker
+  if (rev > 0) {
+    const x = sx(rev - 1);
+    ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, h - padB); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // axis labels
+  ctx.fillStyle = "#6f7889"; ctx.font = "10px system-ui";
+  ctx.textAlign = "left"; ctx.textBaseline = "top";
+  ctx.fillStyle = "#8fd18f"; ctx.fillText("length", padL + 2, padT);
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#f0c674"; ctx.fillText("temp", w - padR - 2, padT);
+}
+function drawSeries(ctx, F, n, sx, yof, color, lw, from, to) {
+  if (to <= from) return;
+  ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.lineJoin = "round";
+  ctx.beginPath();
+  for (let i = from; i < to; i++) {
+    const X = sx(i), Y = yof(F[i]);
+    if (i === from) ctx.moveTo(X, Y); else ctx.lineTo(X, Y);
+  }
+  ctx.stroke();
+}
+
+// ---------- Info ----------
+function fmt(x, d = 3) { return isFinite(x) ? x.toFixed(d) : "—"; }
+function updateInfo() {
+  const F = state.frames, rev = Math.min(state.revealed, F.length);
+  const f = rev > 0 ? F[rev - 1] : null;
+  document.getElementById("stStep").textContent = Math.max(0, rev - 1);
+  if (f) {
+    document.getElementById("stTemp").textContent = rev === 1 ? "start" : fmt(f.T, 3);
+    document.getElementById("stCur").textContent = fmt(f.cur, 3);
+    document.getElementById("stBest").textContent = fmt(f.best_, 3);
+    document.getElementById("stAcc").innerHTML = rev === 1 ? "—" : Math.round(f.acc * 100) + "<small>%</small>";
+    const saved = state.initLen > 0 ? (1 - f.best_ / state.initLen) * 100 : 0;
+    document.getElementById("stSave").innerHTML = fmt(saved, 1) + "<small>%</small>";
+  } else {
+    for (const id of ["stTemp", "stCur", "stBest", "stAcc", "stSave"]) document.getElementById(id).textContent = "—";
+  }
+
+  const badge = document.getElementById("badge");
+  const done = rev >= F.length;
+  if (F.length <= 1) { badge.className = "badge run"; badge.textContent = "Add a few more cities to anneal"; }
+  else if (rev <= 1) { badge.className = "badge run"; badge.textContent = "Initial tour is a random tangle — press Play"; }
+  else if (!done) { badge.className = "badge run"; badge.textContent = `Cooling… step ${rev - 1} of ${F.length - 1}`; }
+  else {
+    badge.className = "badge ok";
+    const saved = state.initLen > 0 ? (1 - F[F.length - 1].best_ / state.initLen) * 100 : 0;
+    badge.textContent = `✓ Frozen — final tour ${fmt(saved, 1)}% shorter than the start`;
+  }
+  document.getElementById("stepBtn").disabled = done;
+}
+
+// ---------- Control flow ----------
+function rebuild() { stopPlay(); generate(); state.revealed = 1; drawTour(); drawCurve(); updateInfo(); }
+function redraw() { drawTour(); drawCurve(); updateInfo(); }
+function stepOnce() {
+  if (state.revealed < state.frames.length) { state.revealed++; redraw(); }
+  if (state.revealed >= state.frames.length) stopPlay();
+}
+let playTimer = null;
+function startPlay() {
+  if (state.frames.length <= 1) return;
+  if (state.revealed >= state.frames.length) state.revealed = 1;
+  state.playing = true;
+  const b = document.getElementById("playBtn");
+  b.textContent = "❚❚ Pause"; b.classList.remove("primary");
+  const delay = 260 - state.speed * 24;
+  playTimer = setInterval(() => { stepOnce(); if (state.revealed >= state.frames.length) stopPlay(); }, delay);
+}
+function stopPlay() {
+  state.playing = false;
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  const b = document.getElementById("playBtn");
+  if (b) { b.textContent = "▶ Play"; b.classList.add("primary"); }
+}
+
+// ---------- UI ----------
+const layoutSeg = document.getElementById("layoutSeg");
+LAYOUTS.forEach((L, i) => {
+  const b = document.createElement("button");
+  b.textContent = L.label;
+  if (i === 0) b.classList.add("active");
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#layoutSeg button").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    state.layout = L.id; state.extra = []; rebuild();
+  });
+  layoutSeg.appendChild(b);
+});
+
+document.getElementById("newBtn").addEventListener("click", () => {
+  state.seed = (state.seed * 1103515245 + 12345) & 0x7fffffff;
+  state.extra = [];
+  rebuild();
+});
+document.getElementById("nCities").addEventListener("input", e => {
+  state.n = +e.target.value;
+  document.getElementById("nVal").textContent = state.n;
+  state.extra = [];
+  rebuild();
+});
+document.getElementById("temp0").addEventListener("input", e => {
+  state.tempMul = Math.pow(2, +e.target.value / 3);
+  document.getElementById("tVal").textContent = state.tempMul.toFixed(2).replace(/\.00$/, "") + "×";
+  rebuild();
+});
+document.getElementById("alpha").addEventListener("input", e => {
+  state.alpha = +e.target.value / 1000;
+  document.getElementById("aVal").textContent = state.alpha.toFixed(3);
+  rebuild();
+});
+document.getElementById("resetBtn").addEventListener("click", () => { stopPlay(); state.revealed = 1; redraw(); });
+document.getElementById("stepBtn").addEventListener("click", () => { stopPlay(); stepOnce(); });
+document.getElementById("playBtn").addEventListener("click", () => { state.playing ? stopPlay() : startPlay(); });
+document.getElementById("speed").addEventListener("input", e => {
+  state.speed = +e.target.value;
+  document.getElementById("spdVal").textContent =
+    ["", "slowest", "slow", "slow", "medium", "medium", "brisk", "brisk", "fast", "fast", "fastest"][state.speed];
+  if (state.playing) { stopPlay(); startPlay(); }
+});
+
+// click to add a city
+document.getElementById("tour").addEventListener("pointerdown", e => {
+  if (!tourView) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  const x = (e.clientX - r.left - tourView.ox) / tourView.S;
+  const y = (e.clientY - r.top - tourView.oy) / tourView.S;
+  if (x < 0 || x > 1 || y < 0 || y > 1) return;
+  state.extra.push([clamp01(x), clamp01(y)]);
+  rebuild();
+});
+
+window.addEventListener("resize", () => { drawTour(); drawCurve(); });
+
+// ---------- Boot ----------
+rebuild();
+</script>
+</body>
+</html>

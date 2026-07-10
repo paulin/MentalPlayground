@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Function Minimization — Numerical Recipes</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #14161c; --panel: #1b1e27; --panel2: #232a36;
+    --border: #2e3342; --border2: #3a4152;
+    --text: #d8dce6; --muted: #9aa3b5; --dim: #717a8c;
+    --blue: #6fc3ff; --green: #8fd18f; --amber: #f0c674; --pink: #e08fd1; --red: #e8797a;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, sans-serif; line-height: 1.5; }
+  header { padding: 22px 28px 18px; border-bottom: 1px solid var(--border); }
+  .crumb { font-size: 13px; color: var(--dim); margin-bottom: 8px; }
+  .crumb a { color: var(--blue); text-decoration: none; }
+  .crumb a:hover { text-decoration: underline; }
+  h1 { margin: 0; font-size: 24px; color: #f0f2f7; }
+  .sub { margin: 6px 0 0; color: var(--muted); max-width: 800px; font-size: 14px; }
+  code { background: #10131a; border: 1px solid var(--border); border-radius: 4px;
+    padding: 1px 5px; font-size: 12.5px; color: var(--amber); }
+
+  main { display: grid; grid-template-columns: 330px 1fr; gap: 20px;
+    padding: 20px 28px 40px; max-width: 1260px; }
+  @media (max-width: 880px) { main { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+  .panel:last-child { margin-bottom: 0; }
+  .panel h3 { margin: 0 0 12px; font-size: 12px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--dim); }
+
+  .presets { display: flex; flex-wrap: wrap; gap: 7px; }
+  .presets button {
+    background: var(--panel2); border: 1px solid var(--border2); color: var(--text);
+    border-radius: 7px; padding: 7px 10px; font-size: 12.5px; cursor: pointer;
+    transition: border-color .12s, background .12s; }
+  .presets button:hover { border-color: var(--blue); }
+  .presets button.active { background: #223142; border-color: var(--blue); color: #cfe8ff; }
+
+  .seg { display: flex; border: 1px solid var(--border2); border-radius: 7px; overflow: hidden; }
+  .seg button { flex: 1; border: none; border-right: 1px solid var(--border2);
+    background: var(--panel2); color: var(--text); padding: 8px 6px; font-size: 12.5px;
+    cursor: pointer; transition: background .12s; }
+  .seg button:last-child { border-right: none; }
+  .seg button.active { background: var(--blue); color: #0c1016; font-weight: 600; }
+
+  .play-row { display: flex; gap: 8px; margin-top: 4px; }
+  .play-row button { flex: 1; background: var(--panel2); border: 1px solid var(--border2);
+    color: var(--text); border-radius: 7px; padding: 9px 6px; font-size: 13px; cursor: pointer;
+    font-weight: 600; transition: border-color .12s, background .12s; }
+  .play-row button:hover { border-color: var(--blue); }
+  .play-row button.primary { background: var(--blue); color: #0c1016; border-color: var(--blue); }
+  .play-row button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .field { margin-top: 14px; }
+  .field label { display: flex; justify-content: space-between; font-size: 13px;
+    color: var(--muted); margin-bottom: 5px; }
+  .field label .val { color: var(--blue); font-variant-numeric: tabular-nums; }
+  .field.dis { opacity: .4; pointer-events: none; }
+  input[type=range] { width: 100%; accent-color: var(--blue); }
+
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat { background: #171a22; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+  .stat .k { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; }
+  .stat .v { font-size: 16px; color: #eef1f6; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .badge { display: inline-block; margin-top: 12px; padding: 7px 12px; border-radius: 7px;
+    font-size: 13px; font-weight: 600; width: 100%; text-align: center; }
+  .badge.ok { background: rgba(143,209,143,.15); color: var(--green); border: 1px solid rgba(143,209,143,.35); }
+  .badge.warn { background: rgba(232,121,122,.13); color: var(--red); border: 1px solid rgba(232,121,122,.35); }
+  .badge.run { background: rgba(240,198,116,.12); color: var(--amber); border: 1px solid rgba(240,198,116,.3); }
+
+  table.log { width: 100%; border-collapse: collapse; font-size: 12px;
+    font-variant-numeric: tabular-nums; margin-top: 2px; }
+  table.log th { text-align: right; color: var(--dim); font-weight: 500; padding: 4px 6px;
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); }
+  table.log th:first-child { text-align: left; }
+  table.log td { text-align: right; padding: 3px 6px; color: var(--muted); border-bottom: 1px solid #21252f; }
+  table.log td:first-child { text-align: left; color: var(--dim); }
+  table.log tr.cur td { background: #202634; color: #eef1f6; }
+  .logwrap { max-height: 210px; overflow-y: auto; }
+
+  .plot-title { display: flex; align-items: baseline; justify-content: space-between; margin: 0 2px 7px; }
+  .plot-title .t { font-size: 14px; color: #eef1f6; font-weight: 600; }
+  .plot-title .hint { font-size: 12px; color: var(--dim); }
+  canvas { display: block; width: 100%; background: #10131a; border: 1px solid var(--border);
+    border-radius: 10px; touch-action: none; cursor: grab; }
+
+  .explain { margin-top: 20px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 20px; font-size: 14px; color: var(--muted); }
+  .explain h3 { margin: 0 0 10px; color: #eef1f6; font-size: 15px; }
+  .explain p { margin: 0 0 10px; max-width: 940px; }
+  .method-note { display: none; }
+  .method-note.show { display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+</style>
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">← Numerical Recipes</a> &nbsp;/&nbsp; Ch. 10 · Minimization</div>
+  <h1>Function Minimization</h1>
+  <p class="sub">
+    Finding the lowest point of a landscape you can't see all at once. Drop a marker on a
+    contour map and watch three classic optimizers hunt for the valley floor:
+    <b style="color:var(--pink)">gradient descent</b> follows the steepest slope,
+    <b style="color:var(--amber)">momentum</b> builds up speed like a heavy ball, and the
+    <b style="color:var(--green)">Nelder–Mead simplex</b> creeps downhill with no derivatives
+    at all. Drag the start point, then step through the iterations.
+  </p>
+</header>
+
+<main>
+  <!-- CONTROLS -->
+  <div>
+    <div class="panel">
+      <h3>Test function</h3>
+      <div class="presets" id="fnSeg"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Method</h3>
+      <div class="seg" id="methodSeg">
+        <button data-m="gd" class="active">Gradient</button>
+        <button data-m="momentum">Momentum</button>
+        <button data-m="simplex">Simplex</button>
+      </div>
+      <div class="play-row">
+        <button id="resetBtn">⟲ Reset</button>
+        <button id="stepBtn">Step ▸</button>
+        <button id="playBtn" class="primary">▶ Play</button>
+      </div>
+      <div class="field" id="lrField">
+        <label>Step size <span class="val" id="lrVal">1.0×</span></label>
+        <input type="range" min="-8" max="8" value="0" id="lr">
+      </div>
+      <div class="field">
+        <label>Animation speed <span class="val" id="spdVal">medium</span></label>
+        <input type="range" min="1" max="10" value="6" id="speed">
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Where it stands</h3>
+      <div class="stats">
+        <div class="stat"><div class="k">Iteration</div><div class="v" id="stIter">0</div></div>
+        <div class="stat"><div class="k">f(x, y)</div><div class="v" id="stF">—</div></div>
+        <div class="stat"><div class="k">position</div><div class="v" id="stXY">—</div></div>
+        <div class="stat"><div class="k" id="stGk">|∇f|</div><div class="v" id="stG">—</div></div>
+      </div>
+      <div class="badge run" id="badge">Drag the start point, then press Step or Play</div>
+    </div>
+
+    <div class="panel">
+      <h3>Convergence log</h3>
+      <div class="logwrap">
+        <table class="log">
+          <thead><tr><th>n</th><th>x</th><th>y</th><th>f</th></tr></thead>
+          <tbody id="logBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLOT -->
+  <div>
+    <div class="plot-title">
+      <span class="t" id="fnLabel">f(x, y) = (1 − x)² + 100(y − x²)²</span>
+      <span class="hint">brighter = lower · drag ● to move the start</span>
+    </div>
+    <canvas id="plot" height="520"></canvas>
+    <div class="legend">
+      <span><i style="background:#9fd0ea"></i> low ground (near a minimum)</span>
+      <span><i style="background:var(--green)"></i> true minimum</span>
+      <span><i style="background:var(--pink)"></i> path so far</span>
+      <span><i style="background:var(--amber)"></i> current point / simplex</span>
+    </div>
+
+    <div class="explain">
+      <div class="method-note show" id="note-gd">
+        <h3>Gradient descent — always downhill, sometimes forever</h3>
+        <p>
+          The gradient ∇f points in the direction of <em>steepest ascent</em>, so stepping the
+          opposite way, <code>x ← x − η∇f</code>, always heads downhill. It's dead simple, but the
+          fixed step size <code>η</code> is a tyrant: too small and it crawls, too large and it
+          overshoots and diverges. In a curved valley like <b>Rosenbrock's</b> it zig-zags across
+          the walls and inches along the floor — the textbook illustration of why plain gradient
+          descent is slow. On <b>Rastrigin</b> it simply falls into the nearest dimple and stops,
+          never seeing the global minimum.
+        </p>
+      </div>
+      <div class="method-note" id="note-momentum">
+        <h3>Momentum — a heavy ball with memory</h3>
+        <p>
+          Instead of stepping by the raw gradient, accumulate a <em>velocity</em>:
+          <code>v ← βv − η∇f</code>, then <code>x ← x + v</code>. Consistent downhill directions
+          add up so the ball accelerates along the valley floor, while the oscillations that stall
+          gradient descent partly cancel out. It reaches the bottom of Rosenbrock far sooner than
+          plain descent — at the cost of sometimes overshooting and rolling past the minimum before
+          settling. Here β = 0.85 and the step size is matched so you can compare it fairly against
+          gradient descent.
+        </p>
+      </div>
+      <div class="method-note" id="note-simplex">
+        <h3>Nelder–Mead simplex — downhill without a derivative</h3>
+        <p>
+          The "amoeba" keeps a triangle of three points (a <em>simplex</em>) and never touches the
+          gradient. Each step it <b>reflects</b> its worst vertex through the opposite edge; if that
+          lands somewhere great it <b>expands</b> further, if it's still bad it <b>contracts</b>
+          inward, and if all else fails it <b>shrinks</b> toward the best vertex. The triangle
+          tumbles, stretches, and squeezes its way downhill — robust when you have no derivatives
+          or a noisy function, though it can stall on hard curved valleys. Watch the amber triangle
+          flip end over end down the slope.
+        </p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+// ---------- Test functions (value, gradient, domain, minima, start, base step) ----------
+const FUNCS = [
+  { id: "rosen", label: "Rosenbrock", pretty: "f(x, y) = (1 − x)² + 100(y − x²)²",
+    f: (x, y) => { const a = 1 - x, b = y - x*x; return a*a + 100*b*b; },
+    g: (x, y) => [ -2*(1-x) - 400*x*(y - x*x), 200*(y - x*x) ],
+    domain: [-2, 2, -1, 3], minima: [[1, 1]], start: [-1.2, 1.0], lr: 0.0008 },
+  { id: "himmel", label: "Himmelblau", pretty: "f(x, y) = (x² + y − 11)² + (x + y² − 7)²",
+    f: (x, y) => { const A = x*x + y - 11, B = x + y*y - 7; return A*A + B*B; },
+    g: (x, y) => { const A = x*x + y - 11, B = x + y*y - 7; return [4*x*A + 2*B, 2*A + 4*y*B]; },
+    domain: [-5, 5, -5, 5],
+    minima: [[3, 2], [-2.805118, 3.131312], [-3.779310, -3.283186], [3.584428, -1.848126]],
+    start: [-0.4, -0.6], lr: 0.006 },
+  { id: "bowl", label: "Elliptic bowl", pretty: "f(x, y) = x² + 3y²",
+    f: (x, y) => x*x + 3*y*y, g: (x, y) => [2*x, 6*y],
+    domain: [-4, 4, -4, 4], minima: [[0, 0]], start: [-3.3, 3.0], lr: 0.12 },
+  { id: "rastrigin", label: "Rastrigin", pretty: "f(x, y) = 20 + Σ [xᵢ² − 10 cos(2πxᵢ)]",
+    f: (x, y) => 20 + x*x - 10*Math.cos(2*Math.PI*x) + y*y - 10*Math.cos(2*Math.PI*y),
+    g: (x, y) => [2*x + 20*Math.PI*Math.sin(2*Math.PI*x), 2*y + 20*Math.PI*Math.sin(2*Math.PI*y)],
+    domain: [-5, 5, -5, 5], minima: [[0, 0]], start: [-4.1, 3.55], lr: 0.008 },
+];
+
+const state = {
+  fn: FUNCS[0],
+  method: "gd",
+  start: FUNCS[0].start.slice(),
+  stepMul: 1,
+  records: [],
+  status: "idle",
+  revealed: 0,
+  playing: false,
+  speed: 6,
+};
+
+// ---------- Generate the full optimization trajectory ----------
+function generate() {
+  const { f, g } = state.fn;
+  const recs = [];
+  let status = "maxiter";
+  const [x0, y0] = state.start;
+
+  if (state.method === "simplex") {
+    const dx = state.fn.domain[1] - state.fn.domain[0];
+    const step = dx * 0.09;
+    let V = [[x0, y0], [x0 + step, y0], [x0, y0 + step]].map(p => ({ p, f: f(p[0], p[1]) }));
+    const MAX = 170;
+    let lastOp = "start";
+    for (let n = 0; n < MAX; n++) {
+      V.sort((a, b) => a.f - b.f);
+      recs.push({ pt: V[0].p.slice(), f: V[0].f, simplex: V.map(v => v.p.slice()), op: lastOp });
+      const size = dist(V[0].p, V[2].p) + dist(V[0].p, V[1].p);
+      if (size < 1e-5) { status = "converged"; break; }
+      const w = V[2];
+      const c = [(V[0].p[0] + V[1].p[0]) / 2, (V[0].p[1] + V[1].p[1]) / 2];
+      const xr = [c[0] + (c[0] - w.p[0]), c[1] + (c[1] - w.p[1])];
+      const fr = f(xr[0], xr[1]);
+      if (fr < V[0].f) {
+        const xe = [c[0] + 2*(c[0] - w.p[0]), c[1] + 2*(c[1] - w.p[1])];
+        const fe = f(xe[0], xe[1]);
+        if (fe < fr) { V[2] = { p: xe, f: fe }; lastOp = "expand"; }
+        else { V[2] = { p: xr, f: fr }; lastOp = "reflect"; }
+      } else if (fr < V[1].f) {
+        V[2] = { p: xr, f: fr }; lastOp = "reflect";
+      } else {
+        const xc = [c[0] + 0.5*(w.p[0] - c[0]), c[1] + 0.5*(w.p[1] - c[1])];
+        const fc = f(xc[0], xc[1]);
+        if (fc < w.f) { V[2] = { p: xc, f: fc }; lastOp = "contract"; }
+        else {
+          for (let k = 1; k < 3; k++) {
+            const np = [V[0].p[0] + 0.5*(V[k].p[0] - V[0].p[0]), V[0].p[1] + 0.5*(V[k].p[1] - V[0].p[1])];
+            V[k] = { p: np, f: f(np[0], np[1]) };
+          }
+          lastOp = "shrink";
+        }
+      }
+    }
+  } else {
+    const beta = 0.85;
+    const lrEff = state.fn.lr * state.stepMul;
+    const lr = state.method === "momentum" ? lrEff * (1 - beta) : lrEff;
+    let x = x0, y = y0, vx = 0, vy = 0;
+    const MAX = 400;
+    for (let n = 0; n < MAX; n++) {
+      const fv = f(x, y), grad = g(x, y), gn = Math.hypot(grad[0], grad[1]);
+      recs.push({ pt: [x, y], f: fv, gnorm: gn });
+      if (!isFinite(fv) || Math.abs(x) > 1e5 || Math.abs(y) > 1e5) { status = "diverged"; break; }
+      if (gn < 1e-4) { status = "converged"; break; }
+      if (state.method === "momentum") {
+        vx = beta*vx - lr*grad[0]; vy = beta*vy - lr*grad[1];
+        x += vx; y += vy;
+      } else {
+        x -= lr*grad[0]; y -= lr*grad[1];
+      }
+    }
+  }
+  state.records = recs;
+  state.status = status;
+}
+function dist(a, b) { return Math.hypot(a[0] - b[0], a[1] - b[1]); }
+
+// ---------- View / coordinate transforms ----------
+let view = null;
+function computeView(w, h) {
+  const [xmin, xmax, ymin, ymax] = state.fn.domain;
+  const padL = 40, padR = 16, padT = 14, padB = 26;
+  view = {
+    xmin, xmax, ymin, ymax, padL, padR, padT, padB, w, h,
+    pw: w - padL - padR, ph: h - padT - padB,
+    sx: x => padL + (x - xmin) / (xmax - xmin) * (w - padL - padR),
+    sy: y => padT + (ymax - y) / (ymax - ymin) * (h - padT - padB),
+    ix: px => xmin + (px - padL) / (w - padL - padR) * (xmax - xmin),
+    iy: py => ymax - (py - padT) / (h - padT - padB) * (ymax - ymin),
+  };
+}
+
+// ---------- Contour field (cached ImageData at device resolution) ----------
+let fieldCache = null, fieldKey = "";
+function buildField(ctx, w, h, dpr) {
+  const key = state.fn.id + "|" + Math.round(w) + "x" + Math.round(h) + "@" + dpr;
+  if (fieldKey === key && fieldCache) return fieldCache;
+  const V = view, f = state.fn.f;
+  const Wd = Math.round(w * dpr), Hd = Math.round(h * dpr);
+  // sample value range on a coarse grid
+  let vmin = Infinity, vmax = -Infinity;
+  const GS = 90;
+  for (let i = 0; i <= GS; i++) for (let j = 0; j <= GS; j++) {
+    const x = V.xmin + (V.xmax - V.xmin) * i / GS;
+    const y = V.ymin + (V.ymax - V.ymin) * j / GS;
+    const v = f(x, y);
+    if (isFinite(v)) { if (v < vmin) vmin = v; if (v > vmax) vmax = v; }
+  }
+  const lrange = Math.log1p(vmax - vmin) || 1;
+  const NB = 20;
+  const img = ctx.createImageData(Wd, Hd);
+  const data = img.data;
+  // first pass: band index per pixel
+  const band = new Int16Array(Wd * Hd);
+  for (let j = 0; j < Hd; j++) {
+    const pyc = j / dpr;
+    const wy = V.ymax - (pyc - V.padT) / V.ph * (V.ymax - V.ymin);
+    const inY = pyc >= V.padT && pyc <= h - V.padB;
+    for (let i = 0; i < Wd; i++) {
+      const pxc = i / dpr;
+      const idx = j * Wd + i;
+      if (!inY || pxc < V.padL || pxc > w - V.padR) { band[idx] = -1; continue; }
+      const wx = V.xmin + (pxc - V.padL) / V.pw * (V.xmax - V.xmin);
+      const v = f(wx, wy);
+      let t = Math.log1p(v - vmin) / lrange;
+      if (!isFinite(t)) t = 1;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      band[idx] = Math.min(NB - 1, Math.floor(t * NB));
+    }
+  }
+  // second pass: colour + contour lines at band boundaries
+  for (let j = 0; j < Hd; j++) {
+    for (let i = 0; i < Wd; i++) {
+      const idx = j * Wd + i, o = idx * 4;
+      const b = band[idx];
+      if (b < 0) { data[o] = 16; data[o+1] = 19; data[o+2] = 26; data[o+3] = 255; continue; }
+      const c = bandColor(b / (NB - 1));
+      const left = i > 0 ? band[idx - 1] : b, up = j > 0 ? band[idx - Wd] : b;
+      const line = (left >= 0 && left !== b) || (up >= 0 && up !== b);
+      if (line) { data[o] = 205; data[o+1] = 224; data[o+2] = 240; data[o+3] = 255; }
+      else { data[o] = c[0]; data[o+1] = c[1]; data[o+2] = c[2]; data[o+3] = 255; }
+    }
+  }
+  fieldCache = img; fieldKey = key;
+  return img;
+}
+// low t (near minimum) = bright blue; high t = near-background
+function bandColor(t) {
+  const stops = [
+    [0.00, [159, 208, 234]],
+    [0.30, [86, 132, 186]],
+    [0.62, [50, 70, 116]],
+    [1.00, [24, 28, 40]],
+  ];
+  for (let i = 1; i < stops.length; i++) {
+    if (t <= stops[i][0]) {
+      const a = stops[i-1], b = stops[i];
+      const u = (t - a[0]) / (b[0] - a[0]);
+      return [0,1,2].map(k => Math.round(a[1][k] + (b[1][k] - a[1][k]) * u));
+    }
+  }
+  return stops[stops.length - 1][1];
+}
+
+// ---------- Canvas setup ----------
+function setupCanvas(cv) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  }
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  return { ctx, w, h, dpr };
+}
+
+// ---------- Draw ----------
+function draw() {
+  const cv = document.getElementById("plot");
+  const { ctx, w, h, dpr } = setupCanvas(cv);
+  computeView(w, h);
+  const V = view;
+  // background contour field (device pixels)
+  const field = buildField(ctx, w, h, dpr);
+  ctx.putImageData(field, 0, 0);
+  // switch to CSS-pixel space for vector overlays
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // axis ticks
+  ctx.fillStyle = "#8a93a6"; ctx.font = "10px system-ui";
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const xs = niceStep(V.xmax - V.xmin);
+  for (let x = Math.ceil(V.xmin / xs) * xs; x <= V.xmax + 1e-9; x += xs) {
+    if (x < V.xmin + 1e-9) continue;
+    ctx.fillText(fmtTick(x), V.sx(x), h - V.padB + 4);
+  }
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  const ys = niceStep(V.ymax - V.ymin);
+  for (let y = Math.ceil(V.ymin / ys) * ys; y <= V.ymax + 1e-9; y += ys) {
+    ctx.fillText(fmtTick(y), V.padL - 5, V.sy(y));
+  }
+
+  // true minima
+  for (const m of state.fn.minima) {
+    const px = V.sx(m[0]), py = V.sy(m[1]);
+    ctx.fillStyle = "rgba(143,209,143,0.95)";
+    ctx.strokeStyle = "rgba(143,209,143,0.4)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(px, py, 5, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(px, py, 2.5, 0, 7); ctx.fill();
+  }
+
+  const recs = state.records, rev = state.revealed;
+
+  // path so far
+  if (rev > 0) {
+    ctx.strokeStyle = "rgba(224,143,209,0.85)"; ctx.lineWidth = 1.8; ctx.lineJoin = "round";
+    ctx.beginPath();
+    for (let k = 0; k < rev; k++) {
+      const p = recs[k].pt, px = V.sx(p[0]), py = V.sy(p[1]);
+      if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    // small dots at each visited point
+    ctx.fillStyle = "rgba(224,143,209,0.55)";
+    for (let k = 0; k < rev; k++) {
+      const p = recs[k].pt;
+      ctx.beginPath(); ctx.arc(V.sx(p[0]), V.sy(p[1]), 1.8, 0, 7); ctx.fill();
+    }
+  }
+
+  // current record geometry
+  const rec = rev > 0 ? recs[rev - 1] : null;
+  if (rec && state.method === "simplex" && rec.simplex) {
+    const s = rec.simplex;
+    ctx.beginPath();
+    ctx.moveTo(V.sx(s[0][0]), V.sy(s[0][1]));
+    ctx.lineTo(V.sx(s[1][0]), V.sy(s[1][1]));
+    ctx.lineTo(V.sx(s[2][0]), V.sy(s[2][1]));
+    ctx.closePath();
+    ctx.fillStyle = "rgba(240,198,116,0.16)";
+    ctx.strokeStyle = "rgba(240,198,116,0.9)"; ctx.lineWidth = 2;
+    ctx.fill(); ctx.stroke();
+    for (const v of s) { ctx.fillStyle = "#f0c674"; ctx.beginPath(); ctx.arc(V.sx(v[0]), V.sy(v[1]), 3, 0, 7); ctx.fill(); }
+  }
+
+  // current point (amber) — for gradient/momentum this is the marker; for simplex it's the best vertex
+  if (rec) {
+    const p = rec.pt, px = V.sx(p[0]), py = V.sy(p[1]);
+    ctx.fillStyle = "#f0c674";
+    ctx.strokeStyle = "#14161c"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(px, py, 6, 0, 7); ctx.fill(); ctx.stroke();
+  }
+
+  // start handle (drawn when not yet revealed, or always faint)
+  drawStart(ctx, V);
+}
+
+function drawStart(ctx, V) {
+  const px = V.sx(state.start[0]), py = V.sy(state.start[1]);
+  ctx.strokeStyle = "#cfe8ff"; ctx.lineWidth = 2;
+  ctx.fillStyle = "rgba(207,232,255,0.25)";
+  ctx.beginPath(); ctx.arc(px, py, 7, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "#cfe8ff"; ctx.font = "600 10px system-ui";
+  ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+  ctx.fillText("start", px, py - 9);
+}
+
+function niceStep(range) {
+  const raw = range / 6, mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
+  return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
+}
+function fmtTick(v) { if (Math.abs(v) < 1e-9) return "0"; return (Math.round(v * 100) / 100).toString(); }
+
+// ---------- Info panel ----------
+function fmtNum(x, d = 4) {
+  if (!isFinite(x)) return "∞";
+  if (Math.abs(x) !== 0 && (Math.abs(x) < 1e-3 || Math.abs(x) >= 1e5)) return x.toExponential(2);
+  return x.toFixed(d);
+}
+function updateInfo() {
+  const rev = state.revealed, rec = rev > 0 ? state.records[rev - 1] : null;
+  document.getElementById("stIter").textContent = rev;
+  const gk = document.getElementById("stGk");
+  gk.textContent = state.method === "simplex" ? "simplex size" : "|∇f|";
+  if (rec) {
+    document.getElementById("stF").textContent = fmtNum(rec.f, 4);
+    document.getElementById("stXY").textContent = `${fmtNum(rec.pt[0], 3)}, ${fmtNum(rec.pt[1], 3)}`;
+    if (state.method === "simplex") {
+      const s = rec.simplex;
+      document.getElementById("stG").textContent = fmtNum(dist(s[0], s[2]), 3);
+    } else {
+      document.getElementById("stG").textContent = fmtNum(rec.gnorm, 3);
+    }
+  } else {
+    document.getElementById("stF").textContent = "—";
+    document.getElementById("stXY").textContent = "—";
+    document.getElementById("stG").textContent = "—";
+  }
+
+  const badge = document.getElementById("badge");
+  const done = rev >= state.records.length;
+  badge.className = "badge run";
+  if (!state.records.length) {
+    badge.textContent = "Press Step or Play";
+  } else if (!done) {
+    badge.textContent = `Running… step ${rev} of up to ${state.records.length}`;
+  } else if (state.status === "converged") {
+    badge.className = "badge ok";
+    const p = state.records[state.records.length - 1].pt;
+    badge.textContent = `✓ Converged near (${fmtNum(p[0], 3)}, ${fmtNum(p[1], 3)}) in ${state.records.length} steps`;
+  } else if (state.status === "diverged") {
+    badge.className = "badge warn";
+    badge.textContent = "⚠ Diverged — the step size is too large. Turn Step size down.";
+  } else {
+    badge.textContent = `Stopped after ${state.records.length} steps (max reached) — still descending`;
+  }
+
+  // log
+  const body = document.getElementById("logBody");
+  let rows = "";
+  const start = Math.max(0, rev - 60);
+  for (let k = start; k < rev; k++) {
+    const r = state.records[k];
+    const cls = k === rev - 1 ? ' class="cur"' : "";
+    rows += `<tr${cls}><td>${k}</td><td>${fmtNum(r.pt[0], 3)}</td><td>${fmtNum(r.pt[1], 3)}</td><td>${fmtNum(r.f, 3)}</td></tr>`;
+  }
+  body.innerHTML = rows;
+  const wrap = body.closest(".logwrap"); wrap.scrollTop = wrap.scrollHeight;
+
+  document.getElementById("stepBtn").disabled = done && state.records.length > 0;
+}
+
+// ---------- Control flow ----------
+function rebuild() { generate(); state.revealed = 0; stopPlay(); draw(); updateInfo(); }
+function stepOnce() {
+  if (state.revealed < state.records.length) { state.revealed++; draw(); updateInfo(); }
+  if (state.revealed >= state.records.length) stopPlay();
+}
+let playTimer = null;
+function startPlay() {
+  if (!state.records.length) return;
+  if (state.revealed >= state.records.length) state.revealed = 0;
+  state.playing = true;
+  const b = document.getElementById("playBtn");
+  b.textContent = "❚❚ Pause"; b.classList.remove("primary");
+  const delay = 620 - state.speed * 55;
+  playTimer = setInterval(() => { stepOnce(); if (state.revealed >= state.records.length) stopPlay(); }, delay);
+}
+function stopPlay() {
+  state.playing = false;
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  const b = document.getElementById("playBtn");
+  if (b) { b.textContent = "▶ Play"; b.classList.add("primary"); }
+}
+
+// ---------- UI wiring ----------
+const fnSeg = document.getElementById("fnSeg");
+FUNCS.forEach((fn, i) => {
+  const b = document.createElement("button");
+  b.textContent = fn.label; b.dataset.i = i;
+  if (i === 0) b.classList.add("active");
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#fnSeg button").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    state.fn = fn; state.start = fn.start.slice();
+    document.getElementById("fnLabel").textContent = fn.pretty;
+    rebuild();
+  });
+  fnSeg.appendChild(b);
+});
+
+document.querySelectorAll("#methodSeg button").forEach(b =>
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#methodSeg button").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    state.method = b.dataset.m;
+    document.querySelectorAll(".method-note").forEach(n => n.classList.remove("show"));
+    document.getElementById("note-" + state.method).classList.add("show");
+    document.getElementById("lrField").classList.toggle("dis", state.method === "simplex");
+    rebuild();
+  }));
+
+document.getElementById("resetBtn").addEventListener("click", () => { stopPlay(); state.revealed = 0; draw(); updateInfo(); });
+document.getElementById("stepBtn").addEventListener("click", () => { stopPlay(); stepOnce(); });
+document.getElementById("playBtn").addEventListener("click", () => { state.playing ? stopPlay() : startPlay(); });
+
+document.getElementById("lr").addEventListener("input", e => {
+  state.stepMul = Math.pow(2, +e.target.value / 4);       // ~0.25× … 4×
+  document.getElementById("lrVal").textContent = state.stepMul.toFixed(2).replace(/\.00$/, "") + "×";
+  rebuild();
+});
+document.getElementById("speed").addEventListener("input", e => {
+  state.speed = +e.target.value;
+  document.getElementById("spdVal").textContent =
+    ["", "slowest", "slow", "slow", "medium", "medium", "medium", "brisk", "fast", "fast", "fastest"][state.speed];
+  if (state.playing) { stopPlay(); startPlay(); }
+});
+
+// ---------- Dragging the start point ----------
+const canvas = document.getElementById("plot");
+let dragging = false;
+function pointer(e) {
+  const r = canvas.getBoundingClientRect();
+  return [ (e.touches ? e.touches[0].clientX : e.clientX) - r.left,
+           (e.touches ? e.touches[0].clientY : e.clientY) - r.top ];
+}
+function insidePlot(px, py) {
+  return px >= view.padL && px <= view.w - view.padR && py >= view.padT && py <= view.h - view.padB;
+}
+canvas.addEventListener("pointerdown", e => {
+  const [px, py] = pointer(e);
+  if (!view || !insidePlot(px, py)) return;
+  dragging = true;
+  canvas.style.cursor = "grabbing"; canvas.setPointerCapture(e.pointerId);
+  setStart(px, py);
+});
+canvas.addEventListener("pointermove", e => {
+  const [px, py] = pointer(e);
+  if (!dragging) {
+    if (view) {
+      const d = Math.hypot(view.sx(state.start[0]) - px, view.sy(state.start[1]) - py);
+      canvas.style.cursor = d < 14 ? "grab" : (insidePlot(px, py) ? "crosshair" : "default");
+    }
+    return;
+  }
+  setStart(px, py);
+});
+function setStart(px, py) {
+  let x = view.ix(Math.max(view.padL, Math.min(view.w - view.padR, px)));
+  let y = view.iy(Math.max(view.padT, Math.min(view.h - view.padB, py)));
+  state.start = [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000];
+  rebuild();
+}
+function endDrag() { if (dragging) { dragging = false; canvas.style.cursor = "grab"; } }
+canvas.addEventListener("pointerup", endDrag);
+canvas.addEventListener("pointercancel", endDrag);
+
+window.addEventListener("resize", () => { fieldKey = ""; if (state.records.length || true) draw(); });
+
+// ---------- Boot ----------
+rebuild();
+</script>
+</body>
+</html>
