@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Monte Carlo &amp; Random Numbers — Numerical Recipes</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #14161c; --panel: #1b1e27; --panel2: #232a36;
+    --border: #2e3342; --border2: #3a4152;
+    --text: #d8dce6; --muted: #9aa3b5; --dim: #717a8c;
+    --blue: #6fc3ff; --green: #8fd18f; --amber: #f0c674; --pink: #e08fd1; --red: #e8797a;
+  }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, sans-serif; line-height: 1.5; }
+  header { padding: 22px 28px 18px; border-bottom: 1px solid var(--border); }
+  .crumb { font-size: 13px; color: var(--dim); margin-bottom: 8px; }
+  .crumb a { color: var(--blue); text-decoration: none; }
+  .crumb a:hover { text-decoration: underline; }
+  h1 { margin: 0; font-size: 24px; color: #f0f2f7; }
+  .sub { margin: 6px 0 0; color: var(--muted); max-width: 810px; font-size: 14px; }
+  code { background: #10131a; border: 1px solid var(--border); border-radius: 4px;
+    padding: 1px 5px; font-size: 12.5px; color: var(--amber); }
+
+  main { display: grid; grid-template-columns: 330px 1fr; gap: 20px;
+    padding: 20px 28px 40px; max-width: 1260px; }
+  @media (max-width: 880px) { main { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; margin-bottom: 18px; }
+  .panel:last-child { margin-bottom: 0; }
+  .panel h3 { margin: 0 0 12px; font-size: 12px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--dim); }
+
+  .seg { display: flex; border: 1px solid var(--border2); border-radius: 7px; overflow: hidden; }
+  .seg button { flex: 1; border: none; border-right: 1px solid var(--border2);
+    background: var(--panel2); color: var(--text); padding: 8px 6px; font-size: 12.5px;
+    cursor: pointer; transition: background .12s; }
+  .seg button:last-child { border-right: none; }
+  .seg button.active { background: var(--blue); color: #0c1016; font-weight: 600; }
+  .seg.sm button { padding: 7px 4px; font-size: 12px; }
+
+  .presets { display: flex; flex-wrap: wrap; gap: 7px; }
+  .presets button {
+    background: var(--panel2); border: 1px solid var(--border2); color: var(--text);
+    border-radius: 7px; padding: 6px 10px; font-size: 12.5px; cursor: pointer;
+    transition: border-color .12s, background .12s; }
+  .presets button:hover { border-color: var(--blue); }
+  .presets button.active { background: #223142; border-color: var(--blue); color: #cfe8ff; }
+
+  .play-row { display: flex; gap: 8px; margin-top: 10px; }
+  .play-row button { flex: 1; background: var(--panel2); border: 1px solid var(--border2);
+    color: var(--text); border-radius: 7px; padding: 9px 6px; font-size: 13px; cursor: pointer;
+    font-weight: 600; transition: border-color .12s, background .12s; }
+  .play-row button:hover { border-color: var(--blue); }
+  .play-row button.primary { background: var(--blue); color: #0c1016; border-color: var(--blue); }
+  .throw-row { display: flex; gap: 8px; margin-top: 8px; }
+  .throw-row button { flex: 1; background: var(--panel2); border: 1px solid var(--border2);
+    color: var(--text); border-radius: 7px; padding: 8px 6px; font-size: 12.5px; cursor: pointer;
+    font-family: ui-monospace, Menlo, monospace; transition: border-color .12s; }
+  .throw-row button:hover { border-color: var(--blue); }
+
+  .field { margin-top: 14px; }
+  .field label { display: flex; justify-content: space-between; font-size: 13px;
+    color: var(--muted); margin-bottom: 5px; }
+  .field label .val { color: var(--blue); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--blue); }
+  .hide { display: none !important; }
+
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat { background: #171a22; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; }
+  .stat .k { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; }
+  .stat .v { font-size: 17px; color: #eef1f6; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .stat .v small { font-size: 11px; color: var(--dim); }
+  .stat.big { grid-column: 1 / -1; }
+  .stat.big .v { font-size: 22px; }
+
+  .plot-title { display: flex; align-items: baseline; justify-content: space-between; margin: 0 2px 7px; }
+  .plot-title .t { font-size: 14px; color: #eef1f6; font-weight: 600; }
+  .plot-title .hint { font-size: 12px; color: var(--dim); }
+  canvas { display: block; width: 100%; background: #10131a; border: 1px solid var(--border);
+    border-radius: 10px; }
+  #stage { cursor: crosshair; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .legend i.ln { height: 3px; border-radius: 2px; width: 15px; }
+
+  .curveWrap { margin-top: 16px; }
+
+  .explain { margin-top: 20px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 20px; font-size: 14px; color: var(--muted); }
+  .explain h3 { margin: 0 0 10px; color: #eef1f6; font-size: 15px; }
+  .explain p { margin: 0 0 10px; max-width: 950px; }
+  .explain p:last-child { margin-bottom: 0; }
+  .note { display: none; }
+  .note.show { display: block; }
+</style>
+</head>
+<body>
+<header>
+  <div class="crumb"><a href="index.html">← Numerical Recipes</a> &nbsp;/&nbsp; Ch. 7 · Random Numbers</div>
+  <h1>Monte Carlo &amp; Random Numbers</h1>
+  <p class="sub">
+    You can compute a lot by simply <em>guessing at random and keeping score</em>. Throw darts to
+    measure <b style="color:var(--green)">π</b>, estimate an integral by counting hits under a curve,
+    or turn a stream of uniform noise into any distribution you like. Along the way, see why error
+    shrinks like <code>1/√N</code> — and how <b style="color:var(--amber)">quasi-random</b> points
+    that deliberately avoid clustering do dramatically better.
+  </p>
+</header>
+
+<main>
+  <!-- CONTROLS -->
+  <div>
+    <div class="panel">
+      <h3>Experiment</h3>
+      <div class="seg" id="modeSeg">
+        <button data-m="pi" class="active">Estimate π</button>
+        <button data-m="integrate">Integrate</button>
+        <button data-m="sample">Sample</button>
+      </div>
+    </div>
+
+    <!-- sampler: pseudo vs quasi (pi / integrate) -->
+    <div class="panel" id="samplerPanel">
+      <h3>Point source</h3>
+      <div class="seg sm" id="samplerSeg">
+        <button data-s="pseudo" class="active">Pseudo-random</button>
+        <button data-s="quasi">Quasi-random</button>
+      </div>
+      <div class="field" id="fnField" style="margin-top:14px">
+        <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:8px">Function to integrate</div>
+        <div class="presets" id="fnSeg"></div>
+      </div>
+    </div>
+
+    <!-- distribution selector (sample) -->
+    <div class="panel hide" id="distPanel">
+      <h3>Target distribution</h3>
+      <div class="presets" id="distSeg"></div>
+    </div>
+
+    <div class="panel">
+      <h3>Run</h3>
+      <div class="throw-row" id="throwRow">
+        <button data-k="1">+1</button>
+        <button data-k="100">+100</button>
+        <button data-k="1000">+1000</button>
+      </div>
+      <div class="play-row">
+        <button id="resetBtn">⟲ Reset</button>
+        <button id="playBtn" class="primary">▶ Stream</button>
+      </div>
+      <div class="field">
+        <label>Stream speed <span class="val" id="spdVal">brisk</span></label>
+        <input type="range" min="1" max="10" value="7" id="speed">
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Where it stands</h3>
+      <div class="stats" id="statBox"></div>
+    </div>
+  </div>
+
+  <!-- STAGE + CURVE -->
+  <div>
+    <div class="plot-title">
+      <span class="t" id="stageTitle">Throwing darts at a quarter circle</span>
+      <span class="hint" id="stageHint">π ≈ 4 × (darts inside ÷ total)</span>
+    </div>
+    <canvas id="stage" height="440"></canvas>
+    <div class="legend" id="stageLegend"></div>
+
+    <div class="curveWrap">
+      <div class="plot-title">
+        <span class="t" id="curveTitle">Error vs. number of samples</span>
+        <span class="hint" id="curveHint">log–log: watch it track the 1/√N line</span>
+      </div>
+      <canvas id="curve" height="200"></canvas>
+      <div class="legend" id="curveLegend"></div>
+    </div>
+
+    <div class="explain">
+      <div class="note show" id="note-pi">
+        <h3>Estimating π by throwing darts</h3>
+        <p>
+          Scatter points uniformly over a unit square and ask how many land inside the quarter
+          circle <code>x² + y² ≤ 1</code>. That fraction is the ratio of areas — <code>(π/4) / 1</code>
+          — so <b>π ≈ 4 × inside / total</b>. It's the simplest Monte Carlo estimate there is, and a
+          perfect illustration of the method's blessing and curse: the answer is unbiased, but the
+          statistical error only falls as <code>1/√N</code>. To squeeze out one more decimal digit
+          you need <b>100×</b> more darts. Watch the estimate jitter toward 3.14159 and never quite
+          settle.
+        </p>
+      </div>
+      <div class="note" id="note-integrate">
+        <h3>Monte Carlo integration — hit or miss</h3>
+        <p>
+          To integrate <code>f(x)</code>, box it in and throw darts at the box: the fraction landing
+          <em>under</em> the curve, times the box's area, estimates the integral. No quadrature
+          rule, no evenly-spaced panels — just counting. In one dimension this is far slower than
+          Simpson's rule, but Monte Carlo's error scales as <code>1/√N</code> <em>regardless of
+          dimension</em>, so in high dimensions — where grid methods need an astronomical number of
+          points — it wins outright. That's why it dominates in statistical physics and finance.
+        </p>
+      </div>
+      <div class="note" id="note-sample">
+        <h3>Turning uniform noise into any distribution</h3>
+        <p>
+          A raw generator only gives you uniform numbers on <code>[0, 1)</code>. Everything else is
+          built from them. The <b>transformation method</b> (§7.2) feeds a uniform value through the
+          inverse of the target's cumulative distribution — that's how the exponential deviate
+          <code>x = −ln u</code> is born, and how the <b>Box–Muller</b> formula spins two uniforms
+          into two independent Gaussians. When the inverse CDF is intractable, the <b>rejection
+          method</b> (§7.3) throws darts under the density curve and simply keeps the ones that land
+          below it. Watch the histogram fill in and lock onto the smooth target curve.
+        </p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+// ---------- RNG: mulberry32 (pseudo) + Halton (quasi) ----------
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function halton(i, base) {
+  let f = 1, r = 0;
+  while (i > 0) { f /= base; r += f * (i % base); i = Math.floor(i / base); }
+  return r;
+}
+
+// ---------- Integrable functions (with exact integrals) ----------
+const FUNCS = [
+  { id: "sin", label: "sin x", f: x => Math.sin(x), a: 0, b: Math.PI, ymax: 1.04, exact: 2,
+    pretty: "∫₀^π sin x dx = 2" },
+  { id: "pi", label: "4/(1+x²)", f: x => 4 / (1 + x*x), a: 0, b: 1, ymax: 4.1, exact: Math.PI,
+    pretty: "∫₀¹ 4/(1+x²) dx = π" },
+  { id: "gauss", label: "e^(−x²⁄2)", f: x => Math.exp(-x*x/2), a: -3, b: 3, ymax: 1.04,
+    exact: Math.sqrt(2*Math.PI) * erf(3/Math.SQRT2), pretty: "∫₋₃³ e^(−x²ᐟ²) dx ≈ 2.4997" },
+];
+function erf(x) { // Abramowitz-Stegun 7.1.26
+  const t = 1 / (1 + 0.3275911 * Math.abs(x));
+  const y = 1 - (((((1.061405429*t - 1.453152027)*t) + 1.421413741)*t - 0.284496736)*t + 0.254829592)*t*Math.exp(-x*x);
+  return x < 0 ? -y : y;
+}
+
+// ---------- Distributions (sampler + pdf + range + moments) ----------
+const DISTS = [
+  { id: "normal", label: "Normal", lo: -4, hi: 4, mean: 0, varr: 1, method: "Box–Muller",
+    pdf: x => Math.exp(-x*x/2) / Math.sqrt(2*Math.PI),
+    sample: rng => { const u1 = rng(), u2 = rng();
+      return Math.sqrt(-2*Math.log(1 - u1)) * Math.cos(2*Math.PI*u2); } },
+  { id: "expo", label: "Exponential", lo: 0, hi: 7, mean: 1, varr: 1, method: "inverse CDF",
+    pdf: x => x >= 0 ? Math.exp(-x) : 0,
+    sample: rng => -Math.log(1 - rng()) },
+  { id: "tri", label: "Triangular", lo: -1, hi: 1, mean: 0, varr: 1/6, method: "rejection",
+    pdf: x => Math.abs(x) <= 1 ? 1 - Math.abs(x) : 0,
+    sample: (rng, ctx) => { for (let k = 0; k < 100; k++) { ctx.proposals++; const x = rng()*2 - 1, y = rng();
+      if (y < 1 - Math.abs(x)) return x; } return 0; }, rejects: true },
+];
+
+const state = {
+  mode: "pi",
+  sampler: "pseudo",
+  fn: FUNCS[0],
+  dist: DISTS[0],
+  seed: 1,
+  rng: mulberry32(1),
+  n: 0, hits: 0, qi: 0,
+  history: [],          // {n, err}  (pi/integrate) or {n, mean} (sample)
+  bins: null, binLo: 0, binHi: 1, nbin: 48, sum: 0, sum2: 0, proposals: 0,
+  playing: false, speed: 7,
+};
+
+// ---------- Region transform on the stage canvas ----------
+let region = null;
+function computeRegion(w, h) {
+  const padL = 42, padR = 16, padT = 14, padB = 26;
+  if (state.mode === "pi") {
+    const side = Math.min(w - padL - padR, h - padT - padB);
+    const ox = padL, oy = padT + (h - padT - padB - side) / 2;
+    region = { kind: "unit", ox, oy, side,
+      sx: x => ox + x * side, sy: y => oy + (1 - y) * side,
+      w, h, padL, padR, padT, padB };
+  } else if (state.mode === "integrate") {
+    const F = state.fn;
+    region = { kind: "box", padL, padR, padT, padB, w, h, a: F.a, b: F.b, ymax: F.ymax,
+      sx: x => padL + (x - F.a) / (F.b - F.a) * (w - padL - padR),
+      sy: y => padT + (1 - y / F.ymax) * (h - padT - padB) };
+  } else {
+    const D = state.dist;
+    region = { kind: "hist", padL, padR, padT, padB, w, h, lo: D.lo, hi: D.hi,
+      sx: x => padL + (x - D.lo) / (D.hi - D.lo) * (w - padL - padR) };
+  }
+}
+
+// ---------- Offscreen scatter (additive) ----------
+let scatterCv = null, scatterCtx = null, scatterKey = "";
+function ensureScatter(w, h, dpr) {
+  const key = w + "x" + h + "@" + dpr + ":" + state.mode + ":" + state.fn.id;
+  if (scatterKey === key && scatterCv) return;
+  scatterCv = document.createElement("canvas");
+  scatterCv.width = Math.round(w * dpr); scatterCv.height = Math.round(h * dpr);
+  scatterCtx = scatterCv.getContext("2d");
+  scatterCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  scatterKey = key;
+}
+function clearScatter() { if (scatterCtx) scatterCtx.clearRect(0, 0, scatterCv.width, scatterCv.height); }
+
+// ---------- Canvas setup ----------
+function setup(cv, dpr) {
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  }
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+const DPR = () => window.devicePixelRatio || 1;
+
+// ---------- Drawing a batch of samples ----------
+function drawSampleDot(sx, sy, inside) {
+  scatterCtx.fillStyle = inside ? "rgba(143,209,143,0.85)" : "rgba(111,150,190,0.5)";
+  scatterCtx.beginPath(); scatterCtx.arc(sx, sy, 1.7, 0, 7); scatterCtx.fill();
+}
+
+function runBatch(k) {
+  const dpr = DPR();
+  const cv = document.getElementById("stage");
+  const w = cv.clientWidth, h = cv.clientHeight;
+  computeRegion(w, h);
+  ensureScatter(w, h, dpr);
+
+  if (state.mode === "pi") {
+    for (let c = 0; c < k; c++) {
+      state.qi++;
+      const x = state.sampler === "quasi" ? halton(state.qi, 2) : state.rng();
+      const y = state.sampler === "quasi" ? halton(state.qi, 3) : state.rng();
+      const inside = x*x + y*y <= 1;
+      state.n++; if (inside) state.hits++;
+      drawSampleDot(region.sx(x), region.sy(y), inside);
+    }
+    recordError(Math.abs(4 * state.hits / state.n - Math.PI));
+  } else if (state.mode === "integrate") {
+    const F = state.fn, boxArea = (F.b - F.a) * F.ymax;
+    for (let c = 0; c < k; c++) {
+      state.qi++;
+      const u1 = state.sampler === "quasi" ? halton(state.qi, 2) : state.rng();
+      const u2 = state.sampler === "quasi" ? halton(state.qi, 3) : state.rng();
+      const x = F.a + (F.b - F.a) * u1, y = F.ymax * u2;
+      const fx = F.f(x);
+      const inside = fx >= 0 && y <= fx;
+      state.n++; if (inside) state.hits++;
+      drawSampleDot(region.sx(x), region.sy(y), inside);
+    }
+    const est = boxArea * state.hits / state.n;
+    recordError(Math.abs(est - F.exact));
+  } else { // sample
+    const D = state.dist;
+    const ctx = { proposals: 0 };
+    for (let c = 0; c < k; c++) {
+      ctx.proposals = 0;
+      const v = D.sample(state.rng, ctx);
+      state.proposals += ctx.proposals || 1;
+      state.n++; state.sum += v; state.sum2 += v * v;
+      let bi = Math.floor((v - state.binLo) / (state.binHi - state.binLo) * state.nbin);
+      if (bi >= 0 && bi < state.nbin) state.bins[bi]++;
+    }
+    state.history.push({ n: state.n, mean: state.sum / state.n });
+    if (state.history.length > 4000) state.history.splice(0, state.history.length - 4000);
+  }
+}
+function recordError(err) {
+  state.history.push({ n: state.n, err });
+  if (state.history.length > 4000) state.history.splice(0, state.history.length - 4000);
+}
+
+// ---------- Full render ----------
+function render() {
+  drawStage();
+  drawCurve();
+  updateStats();
+}
+
+function drawStage() {
+  const dpr = DPR();
+  const cv = document.getElementById("stage");
+  const { ctx, w, h } = setup(cv, dpr);
+  computeRegion(w, h);
+  ensureScatter(w, h, dpr);
+  ctx.clearRect(0, 0, w, h);
+  const R = region;
+
+  if (state.mode === "pi") {
+    // square boundary + quarter circle
+    ctx.strokeStyle = "#39414f"; ctx.lineWidth = 1.4;
+    ctx.strokeRect(R.ox, R.oy, R.side, R.side);
+    ctx.strokeStyle = "rgba(111,195,255,0.9)"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(R.ox, R.oy + R.side, R.side, -Math.PI/2, 0); ctx.stroke();
+    ctx.drawImage(scatterCv, 0, 0, w, h);
+  } else if (state.mode === "integrate") {
+    drawAxes(ctx, R);
+    // curve + fill
+    const F = state.fn, S = 400;
+    ctx.beginPath();
+    for (let i = 0; i <= S; i++) {
+      const x = F.a + (F.b - F.a) * i / S, px = R.sx(x), py = R.sy(Math.max(0, F.f(x)));
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.strokeStyle = "rgba(111,195,255,0.95)"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.lineTo(R.sx(F.b), R.sy(0)); ctx.lineTo(R.sx(F.a), R.sy(0)); ctx.closePath();
+    ctx.fillStyle = "rgba(111,195,255,0.06)"; ctx.fill();
+    ctx.drawImage(scatterCv, 0, 0, w, h);
+  } else {
+    drawHistogram(ctx, R, w, h);
+  }
+}
+
+function drawAxes(ctx, R) {
+  ctx.fillStyle = "#8a93a6"; ctx.font = "10px system-ui";
+  ctx.strokeStyle = "#1c222d"; ctx.lineWidth = 1;
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const F = state.fn, xs = niceStep(F.b - F.a);
+  for (let x = Math.ceil(F.a / xs) * xs; x <= F.b + 1e-9; x += xs) {
+    ctx.beginPath(); ctx.moveTo(R.sx(x), R.padT); ctx.lineTo(R.sx(x), R.h - R.padB); ctx.stroke();
+    ctx.fillText(fmtTick(x), R.sx(x), R.h - R.padB + 4);
+  }
+  // baseline
+  ctx.strokeStyle = "#39414f";
+  ctx.beginPath(); ctx.moveTo(R.padL, R.sy(0)); ctx.lineTo(R.w - R.padR, R.sy(0)); ctx.stroke();
+}
+
+function drawHistogram(ctx, R, w, h) {
+  const D = state.dist, base = h - R.padB, top = R.padT;
+  // find density scale: max of pdf & observed density
+  let pdfMax = 0;
+  for (let i = 0; i <= 100; i++) pdfMax = Math.max(pdfMax, D.pdf(D.lo + (D.hi - D.lo) * i / 100));
+  const binW = (state.binHi - state.binLo) / state.nbin;
+  let obsMax = 0;
+  if (state.n > 0) for (let b = 0; b < state.nbin; b++) obsMax = Math.max(obsMax, state.bins[b] / (state.n * binW));
+  const dmax = Math.max(pdfMax * 1.15, obsMax * 1.05, 0.1);
+  const syD = d => base - d / dmax * (base - top);
+
+  // bars
+  for (let b = 0; b < state.nbin; b++) {
+    if (!state.bins[b]) continue;
+    const dens = state.bins[b] / (state.n * binW);
+    const x0 = R.sx(state.binLo + b * binW), x1 = R.sx(state.binLo + (b + 1) * binW);
+    ctx.fillStyle = "rgba(143,209,143,0.5)";
+    ctx.fillRect(x0 + 0.5, syD(dens), x1 - x0 - 1, base - syD(dens));
+  }
+  // axis baseline
+  ctx.strokeStyle = "#39414f"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(R.padL, base); ctx.lineTo(w - R.padR, base); ctx.stroke();
+  // pdf overlay
+  ctx.strokeStyle = "rgba(240,198,116,0.95)"; ctx.lineWidth = 2.2; ctx.beginPath();
+  const S = 240;
+  for (let i = 0; i <= S; i++) {
+    const x = D.lo + (D.hi - D.lo) * i / S, px = R.sx(x), py = syD(D.pdf(x));
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+  // x ticks
+  ctx.fillStyle = "#8a93a6"; ctx.font = "10px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const xs = niceStep(D.hi - D.lo);
+  for (let x = Math.ceil(D.lo / xs) * xs; x <= D.hi + 1e-9; x += xs)
+    ctx.fillText(fmtTick(x), R.sx(x), base + 4);
+}
+
+// ---------- Convergence / running-mean curve ----------
+function drawCurve() {
+  const dpr = DPR();
+  const cv = document.getElementById("curve");
+  const { ctx, w, h } = setup(cv, dpr);
+  ctx.clearRect(0, 0, w, h);
+  const padL = 46, padR = 14, padT = 12, padB = 24;
+  const H = state.history;
+
+  if (state.mode === "sample") {
+    // running sample mean → true mean
+    const D = state.dist;
+    if (H.length < 2) return;
+    const nmax = H[H.length - 1].n;
+    const sx = n => padL + Math.log10(Math.max(1, n)) / Math.log10(Math.max(10, nmax)) * (w - padL - padR);
+    let mn = D.mean, mx = D.mean;
+    for (const p of H) { mn = Math.min(mn, p.mean); mx = Math.max(mx, p.mean); }
+    const pad = (mx - mn) * 0.15 || 0.5; mn -= pad; mx += pad;
+    const sy = v => padT + (mx - v) / (mx - mn) * (h - padT - padB);
+    // true mean line
+    ctx.strokeStyle = "rgba(240,198,116,0.7)"; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(padL, sy(D.mean)); ctx.lineTo(w - padR, sy(D.mean)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(240,198,116,0.8)"; ctx.font = "10px system-ui";
+    ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+    ctx.fillText("true mean = " + fmtTick(D.mean), padL + 4, sy(D.mean) - 3);
+    // running mean
+    ctx.strokeStyle = "rgba(224,143,209,0.95)"; ctx.lineWidth = 1.8; ctx.beginPath();
+    H.forEach((p, i) => { const X = sx(p.n), Y = sy(p.mean); i === 0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y); });
+    ctx.stroke();
+    axisLabels(ctx, w, h, padL, padB, "samples N (log)", "sample mean");
+    return;
+  }
+
+  // error vs N, log-log
+  if (H.length < 2) { axisLabels(ctx, w, h, padL, padB, "samples N (log)", "|error| (log)"); return; }
+  const nmax = H[H.length - 1].n;
+  const xlo = 0, xhi = Math.log10(Math.max(10, nmax));
+  const ylo = -4, yhi = 0.3; // error 1e-4 .. ~2
+  const sx = n => padL + (Math.log10(Math.max(1, n)) - xlo) / (xhi - xlo) * (w - padL - padR);
+  const sy = e => padT + (yhi - Math.log10(Math.max(1e-6, e))) / (yhi - ylo) * (h - padT - padB);
+
+  // gridlines at decades
+  ctx.strokeStyle = "#1c222d"; ctx.fillStyle = "#5a6474"; ctx.font = "10px system-ui";
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let e = 0; e >= -4; e--) {
+    const y = sy(Math.pow(10, e));
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+    ctx.fillText("10" + sup(e), padL - 4, y);
+  }
+
+  // reference slope -1/2 (1/sqrt(N)) anchored so it sits among the data
+  const refC = 0.8; // ~ constant for pi darts
+  ctx.strokeStyle = "rgba(120,130,150,0.55)"; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  for (let lx = 0; lx <= xhi; lx += 0.1) {
+    const N = Math.pow(10, lx), e = refC / Math.sqrt(N);
+    const X = sx(N), Y = sy(e); lx === 0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y);
+  }
+  ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = "rgba(150,160,180,0.85)"; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+  ctx.fillText("1/√N", sx(Math.pow(10, xhi * 0.5)) + 4, sy(refC / Math.sqrt(Math.pow(10, xhi * 0.5))) - 3);
+
+  // error curve
+  const col = state.sampler === "quasi" ? "rgba(240,198,116,0.95)" : "rgba(224,143,209,0.95)";
+  ctx.strokeStyle = col; ctx.lineWidth = 1.7; ctx.beginPath();
+  let started = false;
+  for (const p of H) {
+    if (p.err <= 0) continue;
+    const X = sx(p.n), Y = sy(p.err);
+    started ? ctx.lineTo(X, Y) : (ctx.moveTo(X, Y), started = true);
+  }
+  ctx.stroke();
+  axisLabels(ctx, w, h, padL, padB, "samples N (log)", "");
+}
+function axisLabels(ctx, w, h, padL, padB, xl, yl) {
+  ctx.fillStyle = "#6f7889"; ctx.font = "10px system-ui";
+  ctx.textAlign = "right"; ctx.textBaseline = "bottom"; ctx.fillText(xl, w - 14, h - 6);
+  if (yl) { ctx.save(); ctx.translate(12, 16); ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillText(yl, 0, 0); ctx.restore(); }
+}
+function sup(e) { const m = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴" }; return String(e).split("").map(c => m[c] || c).join(""); }
+
+// ---------- Stats panel ----------
+function fmtNum(x, d = 5) { return isFinite(x) ? x.toFixed(d) : "—"; }
+function niceStep(range) {
+  const raw = range / 6, mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
+  return (n < 1.5 ? 1 : n < 3 ? 2 : n < 7 ? 5 : 10) * mag;
+}
+function fmtTick(v) { if (Math.abs(v) < 1e-9) return "0"; const r = Math.round(v * 100) / 100; return r.toString(); }
+
+function updateStats() {
+  const box = document.getElementById("statBox");
+  let html = "";
+  if (state.mode === "pi") {
+    const est = state.n ? 4 * state.hits / state.n : NaN;
+    const err = Math.abs(est - Math.PI);
+    html = `
+      <div class="stat big"><div class="k">π estimate</div><div class="v" style="color:var(--green)">${state.n ? fmtNum(est, 5) : "—"}</div></div>
+      <div class="stat"><div class="k">Darts</div><div class="v">${state.n.toLocaleString()}</div></div>
+      <div class="stat"><div class="k">Inside</div><div class="v">${state.hits.toLocaleString()}</div></div>
+      <div class="stat"><div class="k">Error</div><div class="v">${state.n ? fmtNum(err, 5) : "—"}</div></div>
+      <div class="stat"><div class="k">True π</div><div class="v">3.14159</div></div>`;
+  } else if (state.mode === "integrate") {
+    const F = state.fn, boxArea = (F.b - F.a) * F.ymax;
+    const est = state.n ? boxArea * state.hits / state.n : NaN;
+    const err = Math.abs(est - F.exact);
+    html = `
+      <div class="stat big"><div class="k">Integral estimate</div><div class="v" style="color:var(--green)">${state.n ? fmtNum(est, 5) : "—"}</div></div>
+      <div class="stat"><div class="k">Samples</div><div class="v">${state.n.toLocaleString()}</div></div>
+      <div class="stat"><div class="k">Under curve</div><div class="v">${state.hits.toLocaleString()}</div></div>
+      <div class="stat"><div class="k">Exact</div><div class="v">${fmtNum(F.exact, 5)}</div></div>
+      <div class="stat"><div class="k">Error</div><div class="v">${state.n ? fmtNum(err, 5) : "—"}</div></div>`;
+  } else {
+    const D = state.dist;
+    const mean = state.n ? state.sum / state.n : NaN;
+    const varr = state.n > 1 ? state.sum2 / state.n - mean * mean : NaN;
+    const accept = state.proposals ? state.n / state.proposals : 1;
+    html = `
+      <div class="stat"><div class="k">Samples</div><div class="v">${state.n.toLocaleString()}</div></div>
+      <div class="stat"><div class="k">Method</div><div class="v" style="font-size:13px">${D.method}</div></div>
+      <div class="stat"><div class="k">Sample mean</div><div class="v">${state.n ? fmtNum(mean, 3) : "—"}</div></div>
+      <div class="stat"><div class="k">True mean</div><div class="v">${fmtNum(D.mean, 3)}</div></div>
+      <div class="stat"><div class="k">Sample var</div><div class="v">${state.n > 1 ? fmtNum(varr, 3) : "—"}</div></div>
+      <div class="stat"><div class="k">True var</div><div class="v">${fmtNum(D.varr, 3)}</div></div>`;
+    if (D.rejects) html += `<div class="stat big"><div class="k">Acceptance rate</div><div class="v">${(accept*100).toFixed(1)}<small>%</small></div></div>`;
+  }
+  box.innerHTML = html;
+}
+
+// ---------- Reset / mode wiring ----------
+function resetRun(newSeed) {
+  stopPlay();
+  if (newSeed) state.seed = (state.seed * 1664525 + 1013904223) & 0x7fffffff;
+  state.rng = mulberry32(state.seed || 1);
+  state.n = 0; state.hits = 0; state.qi = 0; state.history = [];
+  state.sum = 0; state.sum2 = 0; state.proposals = 0;
+  state.nbin = 48;
+  state.binLo = state.dist.lo; state.binHi = state.dist.hi;
+  state.bins = new Float64Array(state.nbin);
+  scatterKey = ""; // force fresh offscreen
+  render();
+}
+
+function applyMode() {
+  const isSample = state.mode === "sample";
+  document.getElementById("samplerPanel").classList.toggle("hide", isSample);
+  document.getElementById("distPanel").classList.toggle("hide", !isSample);
+  document.getElementById("fnField").classList.toggle("hide", state.mode !== "integrate");
+
+  document.querySelectorAll(".note").forEach(n => n.classList.remove("show"));
+  document.getElementById("note-" + state.mode).classList.add("show");
+
+  // titles + legends
+  const st = document.getElementById("stageTitle"), sh = document.getElementById("stageHint");
+  const ct = document.getElementById("curveTitle"), ch = document.getElementById("curveHint");
+  const sl = document.getElementById("stageLegend"), cl = document.getElementById("curveLegend");
+  if (state.mode === "pi") {
+    st.textContent = "Throwing darts at a quarter circle";
+    sh.textContent = "π ≈ 4 × (inside ÷ total)";
+    ct.textContent = "Error vs. number of samples"; ch.textContent = "log–log: watch it track the 1/√N line";
+    sl.innerHTML = legend([["#8fd18f", "inside the circle"], ["#6f96be", "outside"], ["#6fc3ff", "boundary", true]]);
+  } else if (state.mode === "integrate") {
+    st.textContent = "Hit-or-miss under " + state.fn.label;
+    sh.textContent = state.fn.pretty;
+    ct.textContent = "Error vs. number of samples"; ch.textContent = "log–log: watch it track the 1/√N line";
+    sl.innerHTML = legend([["#8fd18f", "under the curve"], ["#6f96be", "above (miss)"], ["#6fc3ff", "f(x)", true]]);
+  } else {
+    st.textContent = "Histogram of " + state.dist.label + " samples";
+    sh.textContent = "built from uniform noise via " + state.dist.method;
+    ct.textContent = "Running sample mean"; ch.textContent = "converging to the true mean";
+    sl.innerHTML = legend([["#8fd18f", "sampled histogram"], ["#f0c674", "target density", true]]);
+  }
+  cl.innerHTML = state.mode === "sample"
+    ? legend([["#e08fd1", "sample mean", true], ["#f0c674", "true mean", true]])
+    : legend([[state.sampler === "quasi" ? "#f0c674" : "#e08fd1", "|error|", true], ["#8892a6", "1/√N slope", true]]);
+}
+function legend(items) {
+  return items.map(([c, t, line]) => `<span><i class="${line ? "ln" : ""}" style="background:${c}"></i> ${t}</span>`).join("");
+}
+
+// ---------- Build selectors ----------
+document.querySelectorAll("#modeSeg button").forEach(b =>
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#modeSeg button").forEach(x => x.classList.remove("active"));
+    b.classList.add("active"); state.mode = b.dataset.m;
+    applyMode(); resetRun(false);
+  }));
+document.querySelectorAll("#samplerSeg button").forEach(b =>
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#samplerSeg button").forEach(x => x.classList.remove("active"));
+    b.classList.add("active"); state.sampler = b.dataset.s;
+    applyMode(); resetRun(false);
+  }));
+
+const fnSeg = document.getElementById("fnSeg");
+FUNCS.forEach((F, i) => {
+  const b = document.createElement("button");
+  b.textContent = F.label; if (i === 0) b.classList.add("active");
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#fnSeg button").forEach(x => x.classList.remove("active"));
+    b.classList.add("active"); state.fn = F; applyMode(); resetRun(false);
+  });
+  fnSeg.appendChild(b);
+});
+const distSeg = document.getElementById("distSeg");
+DISTS.forEach((D, i) => {
+  const b = document.createElement("button");
+  b.textContent = D.label; if (i === 0) b.classList.add("active");
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#distSeg button").forEach(x => x.classList.remove("active"));
+    b.classList.add("active"); state.dist = D; applyMode(); resetRun(false);
+  });
+  distSeg.appendChild(b);
+});
+
+document.querySelectorAll("#throwRow button").forEach(b =>
+  b.addEventListener("click", () => { stopPlay(); runBatch(+b.dataset.k); render(); }));
+document.getElementById("resetBtn").addEventListener("click", () => resetRun(true));
+document.getElementById("playBtn").addEventListener("click", () => state.playing ? stopPlay() : startPlay());
+document.getElementById("speed").addEventListener("input", e => {
+  state.speed = +e.target.value;
+  document.getElementById("spdVal").textContent =
+    ["", "slowest", "slow", "slow", "steady", "steady", "brisk", "brisk", "fast", "fast", "fastest"][state.speed];
+  if (state.playing) { stopPlay(); startPlay(); }
+});
+
+// ---------- Streaming ----------
+let playTimer = null;
+const MAXN = 500000;
+function startPlay() {
+  if (state.n >= MAXN) return;
+  state.playing = true;
+  const b = document.getElementById("playBtn");
+  b.textContent = "❚❚ Pause"; b.classList.remove("primary");
+  const perTick = [0, 3, 6, 10, 18, 30, 50, 90, 160, 280, 500][state.speed];
+  playTimer = setInterval(() => {
+    runBatch(perTick); render();
+    if (state.n >= MAXN) stopPlay();
+  }, 40);
+}
+function stopPlay() {
+  state.playing = false;
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  const b = document.getElementById("playBtn");
+  if (b) { b.textContent = "▶ Stream"; b.classList.add("primary"); }
+}
+
+window.addEventListener("resize", () => { scatterKey = ""; clearScatterOnResize(); render(); });
+function clearScatterOnResize() {
+  // scatter coords change with size; simplest correct behaviour is to restart the run
+  // but keep counts? redrawing stored points isn't tracked — so restart cleanly.
+  state.n = 0; state.hits = 0; state.qi = 0; state.history = [];
+  state.sum = 0; state.sum2 = 0; state.proposals = 0;
+  state.rng = mulberry32(state.seed || 1);
+  if (state.bins) state.bins = new Float64Array(state.nbin);
+}
+
+// ---------- Boot ----------
+applyMode();
+resetRun(false);
+</script>
+</body>
+</html>
